@@ -1,0 +1,91 @@
+{
+  "name": "eslint-plugin-supabase",
+  "version": "0.0.0",
+  "description": "ESLint rules for Supabase projects: unsent query builders, missing realtime subscribe status handlers, unpublished realtime tables, and RLS or grant mismatches.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "docs": "eslint-doc-generator",
+    "docs:check": "eslint-doc-generator --check",
+    "mutation": "stryker run",
+    "bench": "node scripts/bench.mjs",
+    "pack-check": "node scripts/pack-install-check.js"
+  },
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "supabase",
+    "supabase-js",
+    "postgres",
+    "rls",
+    "realtime",
+    "typescript"
+  ],
+  "author": {
+    "name": "Aman Gupta",
+    "url": "https://github.com/guptaaman678"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guptaaman678/eslint-plugin-supabase.git"
+  },
+  "bugs": {
+    "url": "https://github.com/guptaaman678/eslint-plugin-supabase/issues"
+  },
+  "homepage": "https://github.com/guptaaman678/eslint-plugin-supabase#readme",
+  "peerDependencies": {
+    "eslint": "TODO(T0.3)",
+    "typescript": "TODO(T0.3)",
+    "@typescript-eslint/parser": "TODO(T0.3)"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.5",
+    "@typescript-eslint/parser": "8.71.1",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-doc-generator": "3.7.1",
+    "eslint-plugin-eslint-plugin": "7.6.2",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "tsup": "8.5.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vitest": "5.0.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
