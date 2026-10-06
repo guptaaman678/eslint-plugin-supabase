@@ -1,0 +1,32 @@
+name: New rule proposal
+description: Propose a new check within the project's scope (supabase-js call sites, realtime, RLS and grants reachability)
+labels: ['new-rule']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real mistake does this catch, and how does it fail today (silently, or with a confusing runtime error)?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: A minimal TypeScript example that should trigger the new rule.
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Why this belongs in scope
+      description: >
+        This project covers supabase-js call sites: unsent queries, realtime
+        subscriptions and publications, and RLS or grant mismatches surfaced
+        through a project's migrations. General ESLint or TypeScript rules,
+        and anything that needs a live database connection, are out of
+        scope. Explain why this check needs the plugin's schema access
+        rather than a generic rule.
+    validations:
+      required: true

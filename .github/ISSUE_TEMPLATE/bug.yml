@@ -1,0 +1,50 @@
+name: Bug report
+description: Something is broken (a crash, a wrong report, ESLint config errors)
+labels: ['bug']
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: Version of `eslint-plugin-supabase` from `package.json` or `npm ls eslint-plugin-supabase`
+      placeholder: '0.1.0'
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal code
+      description: >
+        The smallest source file (and ESLint config) that reproduces the
+        problem. Please remove anything specific to your project; a
+        synthetic table name is fine.
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the full command you ran and its output.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: ESLint, TypeScript and Node version
+      placeholder: 'ESLint 9.15.0, TypeScript 5.6.2, Node 22.16.0'
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: 'macOS 14'
+    validations:
+      required: false

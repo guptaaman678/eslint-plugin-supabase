@@ -1,0 +1,53 @@
+name: False positive / false negative
+description: A rule fired when it should not have, or stayed silent when it should have fired
+labels: ['false-positive']
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: Version of `eslint-plugin-supabase` from `package.json` or `npm ls eslint-plugin-supabase`
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      placeholder: 'supabase/rls-readable'
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Code
+      description: >
+        The minimal source file (and ESLint config) that reproduces the
+        issue. Please anonymize table and column names if needed;
+        synthetic names are fine.
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: migration
+    attributes:
+      label: Migration SQL
+      description: >
+        The `supabase/migrations/` SQL relevant to the table or policy
+        involved, if the rule reads project schema.
+      render: sql
+    validations:
+      required: false
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What findings (or lack of findings) you expected, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: The lint output the rule produced.
+    validations:
+      required: true
