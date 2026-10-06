@@ -29,6 +29,15 @@ import supabase from 'eslint-plugin-supabase';
 export default [supabase.configs.recommended];
 ```
 
+## Rules
+
+<!-- begin auto-generated rules list -->
+
+| Name |
+| :--- |
+
+<!-- end auto-generated rules list -->
+
 ## License
 
 MIT
