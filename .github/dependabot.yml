@@ -9,6 +9,9 @@ updates:
         dependency-type: development
       npm-production:
         dependency-type: production
+    ignore:
+      # Pinned on purpose: tests run against supabase-js 2.58.0, the pre-2.88 declaration layout.
+      - dependency-name: supabase-js-2-58
     commit-message:
       prefix: chore
       include: scope
