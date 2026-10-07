@@ -1,0 +1,141 @@
+{
+  "snapshotVersion": 1,
+  "relations": [
+    {
+      "schema": "public",
+      "name": "messages",
+      "kind": "table",
+      "created": {
+        "file": "supabase/migrations/20260101000000_publications.sql",
+        "line": 1,
+        "column": 1
+      },
+      "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "privileges": {
+        "anon": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "authenticated": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "service_role": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        }
+      },
+      "policies": []
+    },
+    {
+      "schema": "public",
+      "name": "scores",
+      "kind": "table",
+      "created": {
+        "file": "supabase/migrations/20260101000000_publications.sql",
+        "line": 6,
+        "column": 1
+      },
+      "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "privileges": {
+        "anon": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "authenticated": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "service_role": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        }
+      },
+      "policies": []
+    }
+  ],
+  "sequences": [],
+  "publications": [
+    {
+      "name": "everything",
+      "origin": "migration",
+      "allTables": true,
+      "schemas": [],
+      "tables": [],
+      "uncertain": null,
+      "excluded": []
+    },
+    {
+      "name": "orders_feed",
+      "origin": "migration",
+      "allTables": false,
+      "schemas": [],
+      "tables": [],
+      "uncertain": null,
+      "excluded": []
+    },
+    {
+      "name": "supabase_realtime",
+      "origin": "platform",
+      "allTables": false,
+      "schemas": [],
+      "tables": [],
+      "uncertain": {
+        "file": "supabase/migrations/20260101000000_publications.sql",
+        "line": 24,
+        "column": 1
+      },
+      "excluded": [
+        { "schema": "public", "name": "messages" },
+        { "schema": "public", "name": "orders" }
+      ]
+    }
+  ],
+  "meta": {
+    "engineVersion": "$ENGINE_VERSION",
+    "configSource": "defaults",
+    "files": 1,
+    "since": { "value": null, "source": null },
+    "parseProblems": 0,
+    "dynamicSql": 1,
+    "declarativeFiles": 0,
+    "autoRls": { "mode": "auto", "active": null },
+    "notes": []
+  }
+}

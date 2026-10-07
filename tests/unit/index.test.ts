@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'eslint/config';
 import type { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import plugin from '../../src/index.js';
 import { IGNORED_FILES, TYPESCRIPT_FILES } from '../../src/configs/recommended.js';
+import { engine } from '../../src/schema/engine.js';
+import { migrationsHash } from '../../src/schema/inputs.js';
+import { schemaFixture } from '../harness/rule-tester.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
   name: string;
@@ -39,5 +43,33 @@ describe('plugin object', () => {
   it('turns on every rule of the plugin in recommended, and nothing else', () => {
     const enabled = Object.keys(plugin.configs.recommended.rules ?? {});
     expect(enabled).toEqual(Object.keys(plugin.rules).map((name) => `supabase/${name}`));
+  });
+
+  it('builds recommended at each evaluation, with the hash of the project at the working directory', () => {
+    const projectDir = schemaFixture('basic');
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(projectDir);
+    try {
+      expect(plugin.configs.recommended.settings).toEqual({
+        supabase: { migrationsHash: migrationsHash(engine, { projectDir }) },
+      });
+      cwd.mockReturnValue(path.join(projectDir, 'supabase'));
+      expect(plugin.configs.recommended.settings?.supabase).toBeDefined();
+      cwd.mockReturnValue(path.parse(projectDir).root);
+      expect(plugin.configs.recommended.settings).toBeUndefined();
+    } finally {
+      cwd.mockRestore();
+    }
+  });
+
+  it('carries the withProject helper, backed by the real engine', () => {
+    const projectDir = path.relative(process.cwd(), schemaFixture('rls'));
+    const config = plugin.withProject({ projectDir });
+    expect(config.plugins?.supabase).toBe(plugin);
+    expect(config.settings).toEqual({
+      supabase: {
+        projectDir,
+        migrationsHash: migrationsHash(engine, { projectDir: schemaFixture('rls') }),
+      },
+    });
   });
 });

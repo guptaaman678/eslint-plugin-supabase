@@ -43,7 +43,10 @@ let bundleDir: TempProject;
 beforeAll(async () => {
   bundleDir = new TempProject({});
   // The bundle's package metadata lookup reads `../package.json` from `lib/`, as from `dist/`.
-  bundleDir.write('package.json', '{ "name": "probe", "version": "0.0.0" }');
+  bundleDir.write(
+    'package.json',
+    '{ "name": "probe", "version": "0.0.0", "dependencies": { "supabase-grants-lint": "^0.3.0" } }',
+  );
   await build({
     entry: { 'probe-plugin': PROBE_ENTRY },
     outDir: path.join(bundleDir.dir, 'lib'),

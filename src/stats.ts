@@ -1,14 +1,14 @@
 import { writeFileSync } from 'node:fs';
 import { threadId } from 'node:worker_threads';
 import type { RoleSkipReason } from './roles/resolve.js';
-import type { ProjectSkipReason } from './schema/project.js';
+import type { SchemaSkipReason } from './schema/lookup.js';
 import type { SkipReason } from './supabase/calls.js';
 
 /** Set to a path to write skip statistics at exit, one file per thread (§6.5, ADR-012). */
 export const STATS_ENV = 'ESLINT_PLUGIN_SUPABASE_STATS';
 
 /** Every reason a call site can be skipped. */
-export type StatsReason = SkipReason | RoleSkipReason | ProjectSkipReason;
+export type StatsReason = SkipReason | RoleSkipReason | SchemaSkipReason;
 
 /** The JSON written to `<path>.<threadId>.json`. Summed over threads by the corpus runner. */
 export interface StatsSnapshot {

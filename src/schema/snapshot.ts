@@ -120,3 +120,12 @@ export interface SchemaSnapshot {
 
 /** Whether a table is in a publication; `'unknown'` after a change the replay cannot follow. */
 export type Membership = 'yes' | 'no' | 'unknown';
+
+/**
+ * The engine returned a snapshot of a version the plugin cannot read. Not a schema problem the
+ * rules can skip: the installed `supabase-grants-lint` does not match the plugin, so the lint run
+ * fails with this message.
+ */
+export class SnapshotVersionError extends Error {
+  override readonly name = 'SnapshotVersionError';
+}

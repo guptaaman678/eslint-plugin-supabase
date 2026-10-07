@@ -1,0 +1,152 @@
+{
+  "snapshotVersion": 1,
+  "relations": [
+    {
+      "schema": "public",
+      "name": "todos",
+      "kind": "table",
+      "created": {
+        "file": "supabase/migrations/20260101000000_policies.sql",
+        "line": 1,
+        "column": 1
+      },
+      "rls": {
+        "enabled": true,
+        "forced": false,
+        "source": "statement",
+        "at": { "file": "supabase/migrations/20260101000000_policies.sql", "line": 7, "column": 1 }
+      },
+      "privileges": {
+        "anon": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "authenticated": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "service_role": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        }
+      },
+      "policies": [
+        {
+          "name": "anyone reads nothing",
+          "command": "select",
+          "roles": ["anon"],
+          "permissive": true,
+          "using": "false",
+          "withCheck": null,
+          "created": {
+            "file": "supabase/migrations/20260101000000_policies.sql",
+            "line": 17,
+            "column": 1
+          },
+          "altered": null
+        },
+        {
+          "name": "no deletes",
+          "command": "delete",
+          "roles": ["authenticated"],
+          "permissive": false,
+          "using": "false",
+          "withCheck": null,
+          "created": {
+            "file": "supabase/migrations/20260101000000_policies.sql",
+            "line": 25,
+            "column": 1
+          },
+          "altered": null
+        },
+        {
+          "name": "owners read",
+          "command": "select",
+          "roles": ["authenticated", "anon"],
+          "permissive": true,
+          "using": "other",
+          "withCheck": null,
+          "created": {
+            "file": "supabase/migrations/20260101000000_policies.sql",
+            "line": 9,
+            "column": 1
+          },
+          "altered": {
+            "file": "supabase/migrations/20260101000000_policies.sql",
+            "line": 30,
+            "column": 1
+          }
+        },
+        {
+          "name": "owners write",
+          "command": "insert",
+          "roles": ["authenticated"],
+          "permissive": true,
+          "using": null,
+          "withCheck": "other",
+          "created": {
+            "file": "supabase/migrations/20260101000000_policies.sql",
+            "line": 13,
+            "column": 1
+          },
+          "altered": null
+        },
+        {
+          "name": "service manages",
+          "command": "all",
+          "roles": ["public"],
+          "permissive": true,
+          "using": "service_role",
+          "withCheck": null,
+          "created": {
+            "file": "supabase/migrations/20260101000000_policies.sql",
+            "line": 21,
+            "column": 1
+          },
+          "altered": null
+        }
+      ]
+    }
+  ],
+  "sequences": [],
+  "publications": [
+    {
+      "name": "supabase_realtime",
+      "origin": "platform",
+      "allTables": false,
+      "schemas": [],
+      "tables": [],
+      "uncertain": null,
+      "excluded": []
+    }
+  ],
+  "meta": {
+    "engineVersion": "$ENGINE_VERSION",
+    "configSource": "defaults",
+    "files": 1,
+    "since": { "value": null, "source": null },
+    "parseProblems": 0,
+    "dynamicSql": 0,
+    "declarativeFiles": 0,
+    "autoRls": { "mode": "auto", "active": null },
+    "notes": []
+  }
+}

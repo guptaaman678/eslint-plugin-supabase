@@ -6,6 +6,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "require": "./stub/require.cjs",
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
@@ -14,6 +15,7 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
+    "stub",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -30,8 +32,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "docs": "eslint-doc-generator",
-    "docs:check": "eslint-doc-generator --check",
+    "docs": "node scripts/docs.mjs",
+    "docs:check": "node scripts/docs.mjs --check",
     "mutation": "stryker run",
     "bench": "node scripts/bench.mjs",
     "pack-check": "node scripts/pack-install-check.js"
@@ -66,7 +68,8 @@
     "typescript": ">=5.8.0 <6.1.0"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "^8.58.0"
+    "@typescript-eslint/utils": "^8.58.0",
+    "supabase-grants-lint": "^0.3.0"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

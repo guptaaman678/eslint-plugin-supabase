@@ -1,5 +1,6 @@
 import type { Engine, ReplayProjectOptions } from './engine-api.js';
 import { inputsContentHash, inputsFingerprint, watchedInputs } from './inputs.js';
+import { SnapshotVersionError } from './snapshot.js';
 import { createSchemaView, type SchemaView } from './view.js';
 
 /** How long a checked snapshot is used without looking at the files again (§6.4). */
@@ -52,11 +53,17 @@ export class SnapshotCache {
     return result;
   }
 
+  /**
+   * Replays once. An engine exception is kept as the result, so the project is skipped (reason
+   * `engine-error`) without replaying again until its inputs change. A snapshot version the
+   * plugin cannot read is rethrown: no input change fixes it.
+   */
   private build(options: ReplayProjectOptions): CacheResult {
     try {
       const snapshot = this.engine.replayProjectSync(options);
       return { view: createSchemaView(snapshot, this.engine.publicationMembership) };
     } catch (error) {
+      if (error instanceof SnapshotVersionError) throw error;
       return { error };
     }
   }

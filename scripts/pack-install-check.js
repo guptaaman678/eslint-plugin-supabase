@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // CI job "package" (spec §6.9): pack the built tarball, install it into a throwaway project
 // alongside ESLint and typescript-eslint, and lint a fixture through it.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -65,6 +65,34 @@ try {
     cwd: work,
     stdio: 'inherit',
   });
+
+  // ADR-016: a CommonJS config exports a Promise of the config; a require() of the plugin fails
+  // with a message that shows that form.
+  const importForm =
+    "module.exports = import('eslint-plugin-supabase').then(({ default: supabase }) => [supabase.configs.recommended]);";
+  writeFileSync(join(work, 'promise.cjs'), `${importForm}\n`);
+  const printed = execFileSync(
+    'npx',
+    ['eslint', '--config', 'promise.cjs', '--print-config', 'fixture.ts'],
+    { cwd: work, encoding: 'utf8' },
+  );
+  if (!printed.includes('supabase/no-unsent-query')) {
+    throw new Error('pack-check: the CommonJS Promise config did not load the plugin');
+  }
+  writeFileSync(
+    join(work, 'require.cjs'),
+    "const supabase = require('eslint-plugin-supabase');\nmodule.exports = [supabase.configs.recommended];\n",
+  );
+  const required = spawnSync(
+    'npx',
+    ['eslint', '--config', 'require.cjs', '--print-config', 'fixture.ts'],
+    { cwd: work, encoding: 'utf8' },
+  );
+  if (required.status === 0 || !required.stderr.includes(importForm)) {
+    throw new Error(
+      `pack-check: require() of the plugin did not fail with the import() form\n${required.stderr}`,
+    );
+  }
   console.log('pack-check: OK');
 } finally {
   rmSync(work, { recursive: true, force: true });

@@ -1,0 +1,81 @@
+{
+  "snapshotVersion": 1,
+  "relations": [
+    {
+      "schema": "public",
+      "name": "todos",
+      "kind": "table",
+      "created": {
+        "file": "supabase/migrations/20260101000000_unparseable.sql",
+        "line": 1,
+        "column": 1
+      },
+      "rls": {
+        "enabled": true,
+        "forced": false,
+        "source": "statement",
+        "at": {
+          "file": "supabase/migrations/20260101000000_unparseable.sql",
+          "line": 7,
+          "column": 1
+        }
+      },
+      "privileges": {
+        "anon": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "authenticated": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        },
+        "service_role": {
+          "delete": "table",
+          "insert": "table",
+          "maintain": "table",
+          "references": "table",
+          "select": "table",
+          "trigger": "table",
+          "truncate": "table",
+          "update": "table"
+        }
+      },
+      "policies": []
+    }
+  ],
+  "sequences": [],
+  "publications": [
+    {
+      "name": "supabase_realtime",
+      "origin": "platform",
+      "allTables": false,
+      "schemas": [],
+      "tables": [],
+      "uncertain": null,
+      "excluded": []
+    }
+  ],
+  "meta": {
+    "engineVersion": "$ENGINE_VERSION",
+    "configSource": "defaults",
+    "files": 1,
+    "since": { "value": null, "source": null },
+    "parseProblems": 1,
+    "dynamicSql": 0,
+    "declarativeFiles": 0,
+    "autoRls": { "mode": "auto", "active": null },
+    "notes": []
+  }
+}
