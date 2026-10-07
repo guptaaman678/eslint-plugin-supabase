@@ -102,6 +102,11 @@ describe('parseSettings errors name the key', () => {
       'clients[0].callee',
       'expected a non-empty string',
     ],
+    [
+      { clients: [{ module: 'src/{a,b.ts', role: 'anon' }] },
+      'clients[0].module',
+      'has a "{" without a closing "}": src/{a,b.ts',
+    ],
     [{ clients: [{ module: 'a', role: 'anonn' }] }, 'clients[0].role', 'Did you mean "anon"?'],
     [{ clients: [{ module: 'a', role: 'admin' }] }, 'clients[0].role', 'got "admin".'],
     [{ clients: [{ module: 'a', role: [] }] }, 'clients[0].role', 'expected at least one role'],

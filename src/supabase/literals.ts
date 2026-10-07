@@ -43,7 +43,8 @@ export function resolveExpression(checker: ts.TypeChecker, node: ts.Expression):
   return node;
 }
 
-function skipWrappers(node: ts.Expression): ts.Expression {
+/** `node` without parentheses, `as`, `satisfies` and `!`. */
+export function skipWrappers(node: ts.Expression): ts.Expression {
   while (
     ts.isParenthesizedExpression(node) ||
     ts.isAsExpression(node) ||
@@ -55,7 +56,8 @@ function skipWrappers(node: ts.Expression): ts.Expression {
   return node;
 }
 
-function constInitializer(
+/** The initialiser of the `const` an identifier names, through imports; else undefined. */
+export function constInitializer(
   checker: ts.TypeChecker,
   identifier: ts.Identifier,
 ): ts.Expression | undefined {

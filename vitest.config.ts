@@ -19,6 +19,7 @@ export default defineConfig({
         'src/schema/**': FULL,
         'src/roles/**': FULL,
         'src/supabase/**': FULL,
+        'src/stats.ts': FULL,
       },
     },
   },

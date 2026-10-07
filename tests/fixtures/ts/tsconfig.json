@@ -9,5 +9,5 @@
     "noEmit": true,
     "jsx": "preserve"
   },
-  "include": ["file.ts", "react.tsx", "clients.ts"]
+  "include": ["file.ts", "react.tsx", "clients.ts", "admin.ts"]
 }

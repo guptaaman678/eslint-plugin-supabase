@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { globToRegExp } from './roles/glob.js';
 import { didYouMean } from './util/did-you-mean.js';
 
 /** The database roles a Supabase client can run as. */
@@ -111,6 +112,9 @@ function parseClient(value: unknown, key: string): ClientMapping {
   if (!isRecord(value)) throw new SettingsError(key, `expected an object, got ${describe(value)}`);
   rejectUnknownKeys(value, ['module', 'callee', 'role'], key);
   const module = optionalString(value.module, `${key}.module`);
+  if (module !== undefined && globToRegExp(module) === undefined) {
+    throw new SettingsError(`${key}.module`, `has a "{" without a closing "}": ${module}`);
+  }
   const callee = optionalString(value.callee, `${key}.callee`);
   if (module === undefined && callee === undefined) {
     throw new SettingsError(key, 'needs `module` or `callee` to say which client it maps');
