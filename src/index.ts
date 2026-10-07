@@ -1,30 +1,23 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import type { TSESLint } from '@typescript-eslint/utils';
+import type { ESLint, Linter, Rule } from 'eslint';
+import { createRecommended } from './configs/recommended.js';
+import { NAMESPACE, PACKAGE_NAME, PACKAGE_VERSION } from './meta.js';
 
-interface PackageMeta {
-  name: string;
-  version: string;
-}
+/** Every rule of the plugin, by name without the `supabase/` prefix. */
+const rules: Record<string, TSESLint.RuleModule<string, readonly unknown[]>> = {};
 
-const pkgPath = fileURLToPath(new URL('../package.json', import.meta.url));
-const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as PackageMeta;
-
+// The public objects carry ESLint's own types, so `defineConfig` from `eslint/config` accepts
+// them. typescript-eslint's rule type differs only in marking `defaultOptions` readonly.
 const plugin = {
   meta: {
-    name: pkg.name,
-    version: pkg.version,
-    namespace: 'supabase',
+    name: PACKAGE_NAME,
+    version: PACKAGE_VERSION,
+    namespace: NAMESPACE,
   },
-  rules: {},
-  configs: {},
-};
+  rules: rules as unknown as Record<string, Rule.RuleModule>,
+  configs: {} as { recommended: Linter.Config },
+} satisfies ESLint.Plugin;
 
-plugin.configs = {
-  recommended: {
-    name: 'supabase/recommended',
-    plugins: { supabase: plugin },
-    rules: {},
-  },
-};
+plugin.configs.recommended = createRecommended(plugin);
 
 export default plugin;

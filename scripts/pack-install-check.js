@@ -36,13 +36,35 @@ try {
     stdio: 'inherit',
   });
 
+  // `recommended` covers TypeScript files and its rules need type information.
   writeFileSync(
     join(work, 'eslint.config.js'),
-    "import supabase from 'eslint-plugin-supabase';\nexport default [supabase.configs.recommended];\n",
+    [
+      "import supabase from 'eslint-plugin-supabase';",
+      "import tseslint from 'typescript-eslint';",
+      'export default [',
+      '  {',
+      "    files: ['**/*.ts'],",
+      '    languageOptions: {',
+      '      parser: tseslint.parser,',
+      '      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },',
+      '    },',
+      '  },',
+      '  supabase.configs.recommended,',
+      '];',
+      '',
+    ].join('\n'),
   );
-  writeFileSync(join(work, 'fixture.js'), 'export const x = 1;\n');
+  writeFileSync(
+    join(work, 'tsconfig.json'),
+    JSON.stringify({ compilerOptions: { strict: true, noEmit: true }, include: ['fixture.ts'] }),
+  );
+  writeFileSync(join(work, 'fixture.ts'), 'export const x: number = 1;\n');
 
-  execFileSync('npx', ['eslint', 'fixture.js'], { cwd: work, stdio: 'inherit' });
+  execFileSync('npx', ['eslint', '--max-warnings', '0', 'fixture.ts'], {
+    cwd: work,
+    stdio: 'inherit',
+  });
   console.log('pack-check: OK');
 } finally {
   rmSync(work, { recursive: true, force: true });

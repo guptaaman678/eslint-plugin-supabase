@@ -1,0 +1,9 @@
+{
+  "name": "basic-fixture",
+  "private": true,
+  "grantsLint": {
+    "schemas": [
+      "public"
+    ]
+  }
+}
