@@ -37,9 +37,17 @@ export const plugin: ESLint.Plugin = { meta: { name: 'probe' }, rules: { probe }
 
 const engine = fakeEngine('0.3.0');
 
-export const withProject = createWithProject(plugin, engine);
+const projectConfig = createWithProject(plugin, engine);
+
+// Both helpers drop the real rules: the probe plugin does not have them, and the test files are
+// untyped JavaScript. The settings, which carry the hash, are the plugin's own.
+
+/** The plugin's `withProject`, around the probe plugin. */
+export function withProject(options: Parameters<typeof projectConfig>[0]): Linter.Config {
+  return { ...projectConfig(options), rules: {} };
+}
 
 /** `recommended` as the plugin builds it when ESLint runs in `cwd`. */
 export function recommendedAt(cwd: string): Linter.Config {
-  return createRecommended(plugin, discoveredHash(engine, cwd));
+  return { ...createRecommended(plugin, discoveredHash(engine, cwd)), rules: {} };
 }

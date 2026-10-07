@@ -8,7 +8,7 @@ Not affiliated with or endorsed by Supabase.
 
 ## Status
 
-Pre-release. No rules are published yet (this is the package scaffold); see the project's
+Pre-release. Nothing is published to npm yet; see the project's
 [CHANGELOG](./CHANGELOG.md) for what has shipped.
 
 ## Installation
@@ -33,8 +33,14 @@ export default [supabase.configs.recommended];
 
 <!-- begin auto-generated rules list -->
 
-| Name |
-| :--- |
+💼 Configurations enabled in.\
+✅ Set in the `recommended` configuration.\
+💡 Manually fixable by [editor suggestions](https://eslint.org/docs/latest/use/core-concepts#rule-suggestions).\
+💭 Requires [type information](https://typescript-eslint.io/linting/typed-linting).
+
+| Name                                             | Description                                        | 💼  | 💡  | 💭  |
+| :----------------------------------------------- | :------------------------------------------------- | :-- | :-- | :-- |
+| [no-unsent-query](docs/rules/no-unsent-query.md) | Disallow `void` and unsent Supabase query builders | ✅  | 💡  | 💭  |
 
 <!-- end auto-generated rules list -->
 

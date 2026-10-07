@@ -12,7 +12,9 @@ export const TYPESCRIPT_FILES = ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'];
 export const IGNORED_FILES = ['**/supabase/functions/**'];
 
 /** Rule severities of `recommended`, filled in as rules land. */
-export const recommendedRules: Linter.RulesRecord = {};
+export const recommendedRules: Linter.RulesRecord = {
+  [`${NAMESPACE}/no-unsent-query`]: 'error',
+};
 
 /**
  * `recommended`. With `migrationsHash` (from `discoveredHash`, recomputed at each config

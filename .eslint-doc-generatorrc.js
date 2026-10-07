@@ -1,3 +1,5 @@
+import prettier from 'prettier';
+
 /** @type {import('eslint-doc-generator').GenerateOptions} */
 const config = {
   pathRuleDoc: 'docs/rules/{name}.md',
@@ -13,6 +15,9 @@ const config = {
     'requiresTypeChecking',
     'options',
   ],
+  // Format the generated files as `format:check` expects, so `docs:check` and it agree.
+  postprocess: async (content, path) =>
+    prettier.format(content, { ...(await prettier.resolveConfig(path)), parser: 'markdown' }),
 };
 
 export default config;
