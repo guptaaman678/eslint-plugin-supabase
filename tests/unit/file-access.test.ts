@@ -5,10 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { resolveClientRoles } from '../../src/roles/resolve.js';
+import { SnapshotCache } from '../../src/schema/cache.js';
+import { migrationsHash } from '../../src/schema/inputs.js';
+import { projectForFile } from '../../src/schema/project.js';
 import { grantsLintConfigFiles, readSettings } from '../../src/settings.js';
 import { Stats } from '../../src/stats.js';
 import { analyzeCall } from '../../src/supabase/calls.js';
 import { collect } from '../harness/analyze.js';
+import { fakeEngine } from '../harness/fake-engine.js';
 
 /** Every path the plugin's own modules pass to `node:fs` (dependencies are not mocked). */
 const touched = vi.hoisted(() => [] as string[]);
@@ -112,5 +116,43 @@ describe('file access and key text (G4, G12)', () => {
     expect(output).not.toContain('sb_secret_');
     expect(output).not.toContain('SUPABASE_');
     vi.unstubAllEnvs();
+  });
+
+  it('the schema layer reads only replay inputs and probes only supabase/migrations', () => {
+    touched.length = 0;
+    const engine = fakeEngine();
+    const file = path.join(project, 'src', 'db.ts');
+    const projectDir = projectForFile(file, undefined);
+    expect(projectDir).toBe(project);
+    const options = {
+      projectDir: project,
+      configFile: path.join(project, 'grants-lint.config.json'),
+    };
+    const hash = migrationsHash(engine, options);
+    let time = 0;
+    const cache = new SnapshotCache(engine, () => time);
+    expect(cache.get(options).view).toBeDefined();
+    writeFileSync(path.join(project, 'supabase', 'migrations', '20260101000000_todos.sql'), ';');
+    time += 1000;
+    expect(cache.get(options).view).toBeDefined();
+    const pluginReads = [...touched];
+
+    const allowed = new Set([
+      path.join(project, 'package.json'),
+      path.join(project, 'grants-lint.config.json'),
+    ]);
+    const migrations = path.join(project, 'supabase', 'migrations');
+    const outside = pluginReads.filter(
+      (read) =>
+        !allowed.has(read) &&
+        !read.startsWith(migrations + path.sep) &&
+        !read.endsWith(path.join('supabase', 'migrations')),
+    );
+    expect(outside).toEqual([]);
+    expect(pluginReads.some((read) => read.includes('.env'))).toBe(false);
+    // Control: the mock sees the discovery probe and the migration reads.
+    expect(pluginReads).toContain(migrations);
+    expect(pluginReads).toContain(path.join(migrations, '20260101000000_todos.sql'));
+    expect(hash).not.toContain(SECRET_VALUE);
   });
 });

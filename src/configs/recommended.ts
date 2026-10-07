@@ -14,12 +14,17 @@ export const IGNORED_FILES = ['**/supabase/functions/**'];
 /** Rule severities of `recommended`, filled in as rules land. */
 export const recommendedRules: Linter.RulesRecord = {};
 
-export function createRecommended(plugin: ESLint.Plugin): Linter.Config {
+/**
+ * `recommended`. With `migrationsHash` (from `discoveredHash`, recomputed at each config
+ * evaluation), `eslint --cache` forgets results when the schema inputs change (ADR-012).
+ */
+export function createRecommended(plugin: ESLint.Plugin, migrationsHash?: string): Linter.Config {
   return {
     name: `${NAMESPACE}/recommended`,
     files: TYPESCRIPT_FILES,
     ignores: IGNORED_FILES,
     plugins: { [NAMESPACE]: plugin },
     rules: recommendedRules,
+    ...(migrationsHash === undefined ? {} : { settings: { [NAMESPACE]: { migrationsHash } } }),
   };
 }
