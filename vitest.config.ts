@@ -5,6 +5,9 @@ const FULL = { lines: 100, branches: 100, functions: 100, statements: 100 };
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
+    // The first typed test of a file builds a TypeScript program: 2.5 to 9.4 s on Windows CI
+    // runners under coverage, beyond the 5 s default.
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
