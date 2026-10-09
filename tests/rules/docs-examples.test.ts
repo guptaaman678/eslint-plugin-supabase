@@ -9,30 +9,36 @@ interface Example {
   readonly kind: 'incorrect' | 'correct';
   readonly code: string;
   readonly line: number;
+  /** The rule's options, from a marker line such as "code with `{ "a": 1 }`:". */
+  readonly options?: unknown;
 }
 
 /**
  * The `ts` code blocks of a rule doc that follow a line marking them as **incorrect** or
- * **correct** (as in "Examples of **incorrect** code for this rule:").
+ * **correct** (as in "Examples of **incorrect** code for this rule:"). A marker line may give
+ * the rule's options as JSON in backticks after "with".
  */
 function docExamples(markdown: string): Example[] {
   const lines = markdown.split('\n');
   const examples: Example[] = [];
-  let kind: Example['kind'] | undefined;
+  let marked: Pick<Example, 'kind' | 'options'> | undefined;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
-    const marker = /\*\*(incorrect|correct)\*\*/.exec(line);
-    if (marker !== null) kind = marker[1] as Example['kind'];
-    if (line !== '```ts' || kind === undefined) continue;
+    const marker = /\*\*(incorrect|correct)\*\*(?:.* with `(\{.*\})`)?/.exec(line);
+    if (marker !== null) {
+      const kind = marker[1] as Example['kind'];
+      marked = marker[2] === undefined ? { kind } : { kind, options: JSON.parse(marker[2]) };
+    }
+    if (line !== '```ts' || marked === undefined) continue;
     const end = lines.indexOf('```', i + 1);
-    examples.push({ kind, code: lines.slice(i + 1, end).join('\n'), line: i + 1 });
-    kind = undefined;
+    examples.push({ ...marked, code: lines.slice(i + 1, end).join('\n'), line: i + 1 });
+    marked = undefined;
     i = end;
   }
   return examples;
 }
 
-function lint(rule: string, code: string): Linter.LintMessage[] {
+function lint(rule: string, code: string, options?: unknown): Linter.LintMessage[] {
   return new Linter({ configType: 'flat' }).verify(
     code,
     [
@@ -43,7 +49,7 @@ function lint(rule: string, code: string): Linter.LintMessage[] {
           parserOptions: { projectService: true, tsconfigRootDir: TS_FIXTURE_DIR },
         },
         plugins: { supabase: plugin },
-        rules: { [`supabase/${rule}`]: 'error' },
+        rules: { [`supabase/${rule}`]: options === undefined ? 'error' : ['error', options] },
       },
     ],
     `${TS_FIXTURE_DIR}/file.ts`,
@@ -72,10 +78,15 @@ describe('docExamples', () => {
       'good();',
       'good();',
       '```',
+      'Examples of **correct** code with `{ "allow": ["a"] }`:',
+      '```ts',
+      'a();',
+      '```',
     ].join('\n');
     expect(docExamples(markdown)).toEqual([
       { kind: 'incorrect', code: 'bad();', line: 6 },
       { kind: 'correct', code: 'good();\ngood();', line: 16 },
+      { kind: 'correct', code: 'a();', line: 21, options: { allow: ['a'] } },
     ]);
   });
 });
@@ -94,7 +105,7 @@ describe.each(Object.keys(plugin.rules))('docs/rules/%s.md examples', (rule) => 
   it.each(examples.map((example) => [example.line, example] as const))(
     'example at line %i',
     (_, example) => {
-      const messages = lint(rule, example.code);
+      const messages = lint(rule, example.code, example.options);
       if (example.kind === 'correct') {
         expect(messages).toEqual([]);
       } else {

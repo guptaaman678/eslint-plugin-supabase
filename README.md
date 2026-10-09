@@ -34,13 +34,16 @@ export default [supabase.configs.recommended];
 <!-- begin auto-generated rules list -->
 
 💼 Configurations enabled in.\
+⚠️ Configurations set to warn in.\
 ✅ Set in the `recommended` configuration.\
 💡 Manually fixable by [editor suggestions](https://eslint.org/docs/latest/use/core-concepts#rule-suggestions).\
-💭 Requires [type information](https://typescript-eslint.io/linting/typed-linting).
+💭 Requires [type information](https://typescript-eslint.io/linting/typed-linting).\
+⚙️ Has configuration options.
 
-| Name                                             | Description                                        | 💼  | 💡  | 💭  |
-| :----------------------------------------------- | :------------------------------------------------- | :-- | :-- | :-- |
-| [no-unsent-query](docs/rules/no-unsent-query.md) | Disallow `void` and unsent Supabase query builders | ✅  | 💡  | 💭  |
+| Name                                                               | Description                                                        | 💼  | ⚠️  | 💡  | 💭  | ⚙️  |
+| :----------------------------------------------------------------- | :----------------------------------------------------------------- | :-- | :-- | :-- | :-- | :-- |
+| [no-unsent-query](docs/rules/no-unsent-query.md)                   | Disallow `void` and unsent Supabase query builders                 | ✅  |     | 💡  | 💭  |     |
+| [subscribe-status-handler](docs/rules/subscribe-status-handler.md) | Require a status callback on Supabase Realtime `subscribe()` calls |     | ✅  |     | 💭  | ⚙️  |
 
 <!-- end auto-generated rules list -->
 

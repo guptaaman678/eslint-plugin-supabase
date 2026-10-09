@@ -4,6 +4,7 @@ import { createWithProject, discoveredHash, type ProjectOptions } from './config
 import { createRecommended } from './configs/recommended.js';
 import { NAMESPACE, PACKAGE_NAME, PACKAGE_VERSION } from './meta.js';
 import { noUnsentQuery } from './rules/no-unsent-query.js';
+import { subscribeStatusHandler } from './rules/subscribe-status-handler.js';
 import { engine, loadEngine } from './schema/engine.js';
 
 // ADR-016 (a'): load the SQL parser before ESLint runs a rule, so rules replay migrations
@@ -14,6 +15,7 @@ await loadEngine();
 /** Every rule of the plugin, by name without the `supabase/` prefix. */
 const rules: Record<string, TSESLint.RuleModule<string, readonly unknown[]>> = {
   'no-unsent-query': noUnsentQuery,
+  'subscribe-status-handler': subscribeStatusHandler,
 };
 
 // The public objects carry ESLint's own types, so `defineConfig` from `eslint/config` accepts
