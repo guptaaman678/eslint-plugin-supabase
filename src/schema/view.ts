@@ -5,6 +5,7 @@ import type {
   SchemaSnapshot,
   SnapshotMeta,
   SnapshotPolicy,
+  SnapshotPublication,
   SnapshotRelation,
 } from './snapshot.js';
 
@@ -24,6 +25,8 @@ export interface SchemaView {
   policies(role: Role, schema: string, name: string, command: Privilege): readonly SnapshotPolicy[];
   /** Membership of table `schema.name` in publication `pub`. */
   inPublication(pub: string, schema: string, name: string): Membership;
+  /** The publication, for the location of its `uncertain` mark (ADR-015). */
+  publication(pub: string): SnapshotPublication | undefined;
   meta(): SnapshotMeta;
 }
 
@@ -59,6 +62,7 @@ export function createSchemaView(
       );
     },
     inPublication: (pub, schema, name) => membership(snapshot, pub, schema, name),
+    publication: (pub) => snapshot.publications.find((p) => p.name === pub),
     meta: () => snapshot.meta,
   };
 }

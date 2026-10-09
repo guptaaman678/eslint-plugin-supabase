@@ -4,6 +4,7 @@ import { createWithProject, discoveredHash, type ProjectOptions } from './config
 import { createRecommended } from './configs/recommended.js';
 import { NAMESPACE, PACKAGE_NAME, PACKAGE_VERSION } from './meta.js';
 import { noUnsentQuery } from './rules/no-unsent-query.js';
+import { realtimeTablePublished } from './rules/realtime-table-published.js';
 import { subscribeStatusHandler } from './rules/subscribe-status-handler.js';
 import { engine, loadEngine } from './schema/engine.js';
 
@@ -15,6 +16,7 @@ await loadEngine();
 /** Every rule of the plugin, by name without the `supabase/` prefix. */
 const rules: Record<string, TSESLint.RuleModule<string, readonly unknown[]>> = {
   'no-unsent-query': noUnsentQuery,
+  'realtime-table-published': realtimeTablePublished,
   'subscribe-status-handler': subscribeStatusHandler,
 };
 

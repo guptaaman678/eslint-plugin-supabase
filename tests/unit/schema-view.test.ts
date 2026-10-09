@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSchemaView } from '../../src/schema/view.js';
-import { fakeMembership, fakeSnapshot, fakeView, FAKE_META } from '../harness/fake-snapshot.js';
+import { AT, fakeMembership, fakeSnapshot, fakeView, FAKE_META } from '../harness/fake-snapshot.js';
 
 const view = fakeView({
   relations: {
@@ -106,6 +106,15 @@ describe('SchemaView.inPublication', () => {
   it('treats an empty platform publication as having no members', () => {
     const empty = fakeSnapshot({ relations: { todos: {} } });
     expect(fakeMembership(empty, 'supabase_realtime', 'public', 'todos')).toBe('no');
+  });
+});
+
+describe('SchemaView.publication', () => {
+  it('returns the publication by name, with its uncertain mark, or undefined', () => {
+    expect(view.publication('supabase_realtime')?.uncertain).toEqual(AT);
+    expect(view.publication('everything')?.allTables).toBe(true);
+    expect(view.publication('everything')?.uncertain).toBeNull();
+    expect(view.publication('missing')).toBeUndefined();
   });
 });
 

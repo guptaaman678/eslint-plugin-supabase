@@ -3,7 +3,10 @@ import { Linter } from 'eslint';
 import parser from '@typescript-eslint/parser';
 import { describe, expect, it } from 'vitest';
 import plugin from '../../src/index.js';
-import { TS_FIXTURE_DIR } from '../harness/rule-tester.js';
+import { schemaFixture, TS_FIXTURE_DIR } from '../harness/rule-tester.js';
+
+/** The schema rules' examples run against `tests/fixtures/schemas/docs`. */
+const DOCS_SETTINGS = { supabase: { projectDir: schemaFixture('docs') } };
 
 interface Example {
   readonly kind: 'incorrect' | 'correct';
@@ -50,6 +53,7 @@ function lint(rule: string, code: string, options?: unknown): Linter.LintMessage
         },
         plugins: { supabase: plugin },
         rules: { [`supabase/${rule}`]: options === undefined ? 'error' : ['error', options] },
+        settings: DOCS_SETTINGS,
       },
     ],
     `${TS_FIXTURE_DIR}/file.ts`,

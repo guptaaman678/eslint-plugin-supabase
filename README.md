@@ -40,10 +40,11 @@ export default [supabase.configs.recommended];
 💭 Requires [type information](https://typescript-eslint.io/linting/typed-linting).\
 ⚙️ Has configuration options.
 
-| Name                                                               | Description                                                        | 💼  | ⚠️  | 💡  | 💭  | ⚙️  |
-| :----------------------------------------------------------------- | :----------------------------------------------------------------- | :-- | :-- | :-- | :-- | :-- |
-| [no-unsent-query](docs/rules/no-unsent-query.md)                   | Disallow `void` and unsent Supabase query builders                 | ✅  |     | 💡  | 💭  |     |
-| [subscribe-status-handler](docs/rules/subscribe-status-handler.md) | Require a status callback on Supabase Realtime `subscribe()` calls |     | ✅  |     | 💭  | ⚙️  |
+| Name                                                               | Description                                                         | 💼  | ⚠️  | 💡  | 💭  | ⚙️  |
+| :----------------------------------------------------------------- | :------------------------------------------------------------------ | :-- | :-- | :-- | :-- | :-- |
+| [no-unsent-query](docs/rules/no-unsent-query.md)                   | Disallow `void` and unsent Supabase query builders                  | ✅  |     | 💡  | 💭  |     |
+| [realtime-table-published](docs/rules/realtime-table-published.md) | Require Realtime `postgres_changes` tables to be in the publication | ✅  |     |     | 💭  | ⚙️  |
+| [subscribe-status-handler](docs/rules/subscribe-status-handler.md) | Require a status callback on Supabase Realtime `subscribe()` calls  |     | ✅  |     | 💭  | ⚙️  |
 
 <!-- end auto-generated rules list -->
 
