@@ -7,6 +7,7 @@ import { noUnsentQuery } from './rules/no-unsent-query.js';
 import { realtimeTablePublished } from './rules/realtime-table-published.js';
 import { rlsReadable } from './rules/rls-readable.js';
 import { subscribeStatusHandler } from './rules/subscribe-status-handler.js';
+import { tableGranted } from './rules/table-granted.js';
 import { engine, loadEngine } from './schema/engine.js';
 
 // ADR-016 (a'): load the SQL parser before ESLint runs a rule, so rules replay migrations
@@ -20,6 +21,7 @@ const rules: Record<string, TSESLint.RuleModule<string, readonly unknown[]>> = {
   'realtime-table-published': realtimeTablePublished,
   'rls-readable': rlsReadable,
   'subscribe-status-handler': subscribeStatusHandler,
+  'table-granted': tableGranted,
 };
 
 // The public objects carry ESLint's own types, so `defineConfig` from `eslint/config` accepts

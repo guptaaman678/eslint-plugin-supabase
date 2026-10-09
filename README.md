@@ -46,6 +46,7 @@ export default [supabase.configs.recommended];
 | [realtime-table-published](docs/rules/realtime-table-published.md) | Require Realtime `postgres_changes` tables to be in the publication                     | ✅  |     |     | 💭  | ⚙️  |
 | [rls-readable](docs/rules/rls-readable.md)                         | Require a row level security policy for client reads, filtered writes and subscriptions | ✅  |     |     | 💭  | ⚙️  |
 | [subscribe-status-handler](docs/rules/subscribe-status-handler.md) | Require a status callback on Supabase Realtime `subscribe()` calls                      |     | ✅  |     | 💭  | ⚙️  |
+| [table-granted](docs/rules/table-granted.md)                       | Require the table privileges that client calls and subscriptions need                   | ✅  |     |     | 💭  | ⚙️  |
 
 <!-- end auto-generated rules list -->
 

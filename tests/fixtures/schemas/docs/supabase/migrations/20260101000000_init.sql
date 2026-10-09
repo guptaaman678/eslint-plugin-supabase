@@ -35,3 +35,13 @@ create policy "owners read" on public.scores
 create policy "owners update" on public.scores
   for update to authenticated
   using (auth.uid() = user_id);
+
+-- Grants revoked from the client roles, then select granted back to authenticated.
+create table public.audit_log (
+  id bigint generated always as identity primary key,
+  entry text not null
+);
+
+revoke all on public.audit_log from anon, authenticated;
+
+grant select on public.audit_log to authenticated;

@@ -17,6 +17,7 @@ export const recommendedRules: Linter.RulesRecord = {
   [`${NAMESPACE}/realtime-table-published`]: 'error',
   [`${NAMESPACE}/rls-readable`]: 'error',
   [`${NAMESPACE}/subscribe-status-handler`]: 'warn',
+  [`${NAMESPACE}/table-granted`]: 'error',
 };
 
 /**
