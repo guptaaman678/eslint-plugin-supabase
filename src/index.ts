@@ -5,6 +5,7 @@ import { createRecommended } from './configs/recommended.js';
 import { NAMESPACE, PACKAGE_NAME, PACKAGE_VERSION } from './meta.js';
 import { noUnsentQuery } from './rules/no-unsent-query.js';
 import { realtimeTablePublished } from './rules/realtime-table-published.js';
+import { rlsReadable } from './rules/rls-readable.js';
 import { subscribeStatusHandler } from './rules/subscribe-status-handler.js';
 import { engine, loadEngine } from './schema/engine.js';
 
@@ -17,6 +18,7 @@ await loadEngine();
 const rules: Record<string, TSESLint.RuleModule<string, readonly unknown[]>> = {
   'no-unsent-query': noUnsentQuery,
   'realtime-table-published': realtimeTablePublished,
+  'rls-readable': rlsReadable,
   'subscribe-status-handler': subscribeStatusHandler,
 };
 

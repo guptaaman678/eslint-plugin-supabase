@@ -15,6 +15,7 @@ export const IGNORED_FILES = ['**/supabase/functions/**'];
 export const recommendedRules: Linter.RulesRecord = {
   [`${NAMESPACE}/no-unsent-query`]: 'error',
   [`${NAMESPACE}/realtime-table-published`]: 'error',
+  [`${NAMESPACE}/rls-readable`]: 'error',
   [`${NAMESPACE}/subscribe-status-handler`]: 'warn',
 };
 

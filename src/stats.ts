@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { threadId } from 'node:worker_threads';
 import type { RoleSkipReason } from './roles/resolve.js';
 import type { RealtimeSkipReason } from './rules/realtime-table-published.js';
+import type { RlsSkipReason } from './rules/rls-readable.js';
 import type { SchemaSkipReason } from './schema/lookup.js';
 import type { SkipReason } from './supabase/calls.js';
 
@@ -9,7 +10,8 @@ import type { SkipReason } from './supabase/calls.js';
 export const STATS_ENV = 'ESLINT_PLUGIN_SUPABASE_STATS';
 
 /** Every reason a call site can be skipped. */
-export type StatsReason = SkipReason | RoleSkipReason | SchemaSkipReason | RealtimeSkipReason;
+export type StatsReason =
+  SkipReason | RoleSkipReason | SchemaSkipReason | RealtimeSkipReason | RlsSkipReason;
 
 /** The JSON written to `<path>.<threadId>.json`. Summed over threads by the corpus runner. */
 export interface StatsSnapshot {

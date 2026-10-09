@@ -7,6 +7,9 @@ import { readSettings } from '../settings.js';
 import { stats, type StatsReason } from '../stats.js';
 import { analyzeCall } from '../supabase/calls.js';
 import { createRule } from '../util/create-rule.js';
+import { unresolvedReason } from './unresolved.js';
+
+export { unresolvedReason };
 
 export type MessageId = 'notPublished' | 'unknownTable' | 'publicationUncertain' | 'unresolved';
 
@@ -87,24 +90,6 @@ export function publicationVerdict(
 /** Where a migration made the publication uncertain, as `file:line`. */
 export function locationText(at: SnapshotLocation | null): string {
   return at === null ? 'an earlier migration' : `${at.file}:${at.line}`;
-}
-
-/** The second half of the `unresolved` message: why the call is not checked, and the fix. */
-export function unresolvedReason(reason: StatsReason, table?: string): string {
-  switch (reason) {
-    case 'dynamic-schema':
-      return 'its `schema` is not a string literal. Use a literal schema name.';
-    case 'dynamic-table':
-      return 'its `table` is not a string literal or a union of at most five. Use a literal table name.';
-    case 'realtime-all-tables':
-      return 'it listens to every table of a schema. Subscribe to each table by name to have it checked.';
-    case 'no-project':
-      return 'no `supabase/migrations` folder was found above this file. Set `settings.supabase.projectDir`.';
-    case 'unknown-table':
-      return `\`${table}\` is not created as a table in your migrations. Set \`reportUnknownTables\` to report it.`;
-    default:
-      return 'replaying your migrations failed. Run `npx supabase-grants-lint check` to see why.';
-  }
 }
 
 export const realtimeTablePublished = createRule<[Options], MessageId>({
