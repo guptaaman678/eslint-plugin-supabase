@@ -1,5 +1,7 @@
 # eslint-plugin-supabase
 
+[![mutation](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml/badge.svg)](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml)
+
 ESLint rules that catch Supabase mistakes that TypeScript cannot: unsent query builders, missing
 realtime subscribe status handlers, unpublished realtime tables, and RLS or grant mismatches, all
 found by reading your migrations, not by calling your database.

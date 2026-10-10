@@ -144,9 +144,7 @@ describe('watchedInputs and inputsFingerprint', () => {
     const { project } = setup();
     const gone = path.join(project.dir, 'gone.sql');
     expect(inputsFingerprint(project.dir, { files: [gone] })).toBe('gone.sql\tmissing');
-    expect(inputsFingerprint(project.dir, { error: 'no migrations' })).toBe(
-      'error\tno migrations',
-    );
+    expect(inputsFingerprint(project.dir, { error: 'no migrations' })).toBe('error\tno migrations');
   });
 });
 

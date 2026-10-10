@@ -62,6 +62,8 @@ describe('privilegesOf (postgrest-privileges.md §10.1, ADR-008)', () => {
   it('needs insert, plus select when the insert returns rows', () => {
     expect(privilegesOf(call('insert'))).toEqual(['insert']);
     expect(privilegesOf(call('insert', { returning: true }))).toEqual(['insert', 'select']);
+    // A filter chained on an insert reads no rows, unlike one on an update or delete.
+    expect(privilegesOf(call('insert', { filtered: true }))).toEqual(['insert']);
   });
 
   it('needs select for a filtered or returning update or delete only', () => {
@@ -262,6 +264,13 @@ describe('table-granted in ESLint', () => {
       ...before.skips,
       'unknown-relation': (before.skips['unknown-relation'] ?? 0) + 1,
     });
+  });
+
+  it('skips a file outside any project before mapping clients by module', () => {
+    const settings = { supabase: { clients: [{ module: '**', role: 'anon' }] } };
+    expect(
+      lint(INSERT('orders'), settings, { reportUnresolved: true }).map((m) => m.messageId),
+    ).toEqual(['unresolved']);
   });
 
   it('fails on a settings error even in a file without a Supabase call', () => {

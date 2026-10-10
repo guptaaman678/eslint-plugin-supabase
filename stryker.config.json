@@ -7,7 +7,12 @@
   },
   "ignorePatterns": ["coverage", "dist", "reports", "tests/e2e/projects/node_modules"],
   "coverageAnalysis": "perTest",
-  "mutate": ["src/rules/**/*.ts", "src/schema/**/*.ts", "src/roles/**/*.ts", "src/supabase/**/*.ts"],
+  "mutate": [
+    "src/rules/**/*.ts",
+    "src/schema/**/*.ts",
+    "src/roles/**/*.ts",
+    "src/supabase/**/*.ts"
+  ],
   "reporters": ["html", "json", "clear-text", "progress"],
   "thresholds": {
     "high": 90,

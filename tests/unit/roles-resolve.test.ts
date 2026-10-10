@@ -1,3 +1,5 @@
+import { realpathSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { describe, expect, it } from 'vitest';
@@ -118,6 +120,11 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     const prelude = 'declare const a: string | undefined;';
     expect(only(keyed(nested(15), prelude))).toEqual(SERVICE);
     expect(only(keyed(nested(16), prelude))).toEqual(UNKNOWN);
+    // `x ?? a ?? a` groups to the left, so the key is the deepest left operand.
+    const left = (levels: number) =>
+      'process.env.SUPABASE_SERVICE_ROLE_KEY!' + ' ?? a'.repeat(levels);
+    expect(only(keyed(left(15), prelude))).toEqual(SERVICE);
+    expect(only(keyed(left(16), prelude))).toEqual(UNKNOWN);
   });
 
   it('stops on a const cycle', () => {
@@ -290,8 +297,11 @@ describe('§6.5 step 1: settings.supabase.clients', () => {
     expect(only(`${CLIENT}void supabase.from('todos').select();`, vendor)).toEqual(CLIENT_KEY);
     const outside = { clients: [{ module: '../**', role: 'service_role' }] };
     expect(only(`${CLIENT}void supabase.from('todos').select();`, outside)).toEqual(CLIENT_KEY);
-    // With the repository root as the project, supabase-js's declarations are inside it.
-    const root = fileURLToPath(new URL('../..', import.meta.url));
+    // With the directory that holds node_modules as the project, supabase-js's declarations are
+    // inside it (realpath: a test sandbox may link node_modules from elsewhere).
+    const root = path.dirname(
+      realpathSync(fileURLToPath(new URL('../../node_modules', import.meta.url))),
+    );
     const found = resolveAll(`${CLIENT}void supabase.from('todos').select();`, vendor, root);
     expect(found.map(rolesOnly)).toEqual([CLIENT_KEY]);
   });

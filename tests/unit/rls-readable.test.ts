@@ -100,6 +100,7 @@ describe('rlsVerdict', () => {
 
   it('counts a PUBLIC policy and an ALL policy, and one role of the set is enough', () => {
     expect(rlsVerdict(view, table('todos'), ['anon'], READ, NONE)).toEqual(OK);
+    expect(rlsVerdict(view, table('todos'), ['anon'], SUBSCRIPTION, NONE)).toEqual(OK);
     expect(rlsVerdict(view, table('scores'), DEFAULT, READ, NONE)).toEqual(OK);
     expect(rlsVerdict(view, table('scores'), DEFAULT, SUBSCRIPTION, NONE)).toEqual(OK);
     expect(rlsVerdict(view, table('scores'), DEFAULT, write('delete', true), NONE)).toEqual(OK);
@@ -291,11 +292,26 @@ describe('rls-readable in ESLint', () => {
     // A service role call is looked at, not skipped, and passes.
     expect(lint(SELECT('orders', 'sb_secret_test'), project)).toEqual([]);
     expect(stats.snapshot().calls - before.calls).toBe(4);
+    // An insert is looked at and needs no policy check here.
+    expect(lint(SELECT('orders').replace('.select()', '.insert({})'), project)).toEqual([]);
+    expect(stats.snapshot().calls - before.calls).toBe(5);
+    // An rpc is not a table call: this rule does not look at it.
+    expect(lint(SELECT('orders').replace("from('orders').select()", "rpc('f')"), project)).toEqual(
+      [],
+    );
+    expect(stats.snapshot().calls - before.calls).toBe(5);
     expect(stats.snapshot().skips).toEqual({
       ...before.skips,
       view: (before.skips.view ?? 0) + 1,
       'unknown-relation': (before.skips['unknown-relation'] ?? 0) + 1,
     });
+  });
+
+  it('skips a file outside any project before mapping clients by module', () => {
+    const settings = { supabase: { clients: [{ module: '**', role: 'anon' }] } };
+    expect(
+      lint(SELECT('orders'), settings, { reportUnresolved: true }).map((m) => m.messageId),
+    ).toEqual(['unresolved']);
   });
 
   it('fails on a settings error even in a file without a Supabase call', () => {

@@ -230,6 +230,19 @@ describe('realtime-table-published in ESLint', () => {
     expect(count('unknown-table')).toBe(1);
     expect(lint(SUBSCRIBE('scores'), seeded).map((m) => m.messageId)).toEqual(['notPublished']);
     expect(stats.snapshot().calls - before.calls).toBe(3);
+    // A published table is looked at too.
+    expect(
+      lint(SUBSCRIBE('messages'), { supabase: { projectDir: schemaFixture('realtime') } }),
+    ).toEqual([]);
+    expect(stats.snapshot().calls - before.calls).toBe(4);
+    // ... and passes even when unresolved calls are reported.
+    expect(
+      lint(
+        SUBSCRIBE('messages'),
+        { supabase: { projectDir: schemaFixture('realtime') } },
+        { reportUnresolved: true },
+      ),
+    ).toEqual([]);
   });
 
   it('fails on a settings error even in a file without a subscription', () => {
