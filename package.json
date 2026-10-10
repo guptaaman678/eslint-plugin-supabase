@@ -36,7 +36,7 @@
     "docs:check": "node scripts/docs.mjs --check",
     "mutation": "stryker run",
     "mutation:check": "node scripts/mutation-check.mjs",
-    "bench": "node scripts/bench.mjs",
+    "bench": "npm run build && node scripts/bench.mjs",
     "pack-check": "node scripts/pack-install-check.js"
   },
   "keywords": [

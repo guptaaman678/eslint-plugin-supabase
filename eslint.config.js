@@ -13,6 +13,7 @@ export default tseslint.config(
       'coverage/**',
       'node_modules/**',
       'reports/**',
+      '.bench/**',
       '.stryker-tmp/**',
       '.changeset/**',
       'tests/e2e/projects/**',

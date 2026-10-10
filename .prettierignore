@@ -3,5 +3,6 @@ dist/
 coverage/
 .stryker-tmp/
 reports/
+.bench/
 package-lock.json
 CHANGELOG.md
