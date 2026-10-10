@@ -54,6 +54,8 @@ describe.each(Object.entries(plugin.rules))('rule %s meta', (name, rule) => {
 
   it('takes no options exactly when it has no defaults', () => {
     expect(schema.length === 0).toBe(rule.meta?.defaultOptions === undefined);
+    // typescript-eslint's own copy of the defaults, read by its tooling.
+    if (schema.length === 0) expect(rule).toHaveProperty('defaultOptions', []);
   });
 });
 

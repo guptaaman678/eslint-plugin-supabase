@@ -60,6 +60,11 @@ describe('table operations', () => {
     expect(one(line)).toMatchObject({ operation: 'insert', returning: false });
   });
 
+  it('ends the chain at a parent that is not a member expression', () => {
+    const line = "// @ts-expect-error\n(0, supabase.from('todos'))();";
+    expect(one(line)).toMatchObject({ skip: 'unknown-operation', operation: undefined });
+  });
+
   it('does not take a method used as a constructor for an operation', () => {
     const line = "// @ts-expect-error\nvoid new (supabase.from('todos').select)();";
     expect(one(line)).toMatchObject({ skip: 'unknown-operation', operation: undefined });
