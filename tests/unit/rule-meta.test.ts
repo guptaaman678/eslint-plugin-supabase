@@ -3,21 +3,57 @@ import { describe, expect, it } from 'vitest';
 import { recommendedRules } from '../../src/configs/recommended.js';
 import plugin from '../../src/index.js';
 
-interface OptionsSchema {
-  properties?: Record<string, { description?: string }>;
+interface JsonSchema {
+  type?: string;
+  description?: string;
+  properties?: Record<string, JsonSchema>;
+  items?: JsonSchema;
+  additionalProperties?: boolean;
+}
+
+/** Every object in an options schema, nested ones included. */
+function objects(schema: JsonSchema): JsonSchema[] {
+  const nested = [
+    ...Object.values(schema.properties ?? {}),
+    ...(schema.items ? [schema.items] : []),
+  ];
+  return [...(schema.type === 'object' ? [schema] : []), ...nested.flatMap(objects)];
 }
 
 // The rule meta is what the README table, the docs headers and ESLint's option validation read.
 describe.each(Object.entries(plugin.rules))('rule %s meta', (name, rule) => {
+  const schema = (rule.meta?.schema ?? []) as JsonSchema[];
+
+  it('links its own docs page', () => {
+    expect(rule.meta?.docs?.url).toMatch(new RegExp(`/docs/rules/${name}\\.md$`));
+  });
+
+  it('is a typed problem rule', () => {
+    expect(rule.meta?.type).toBe('problem');
+    expect(rule.meta?.docs).toHaveProperty('requiresTypeChecking', true);
+  });
+
   it('is marked recommended exactly when `recommended` turns it on', () => {
     expect(rule.meta?.docs?.recommended).toBe(`supabase/${name}` in recommendedRules);
   });
 
-  it('describes every option', () => {
-    const schema = (rule.meta?.schema ?? []) as OptionsSchema[];
-    for (const option of Object.values(schema[0]?.properties ?? {})) {
-      expect(option.description?.length).toBeGreaterThan(0);
+  it('has no empty message', () => {
+    for (const message of Object.values(rule.meta?.messages ?? {})) {
+      expect(message.length).toBeGreaterThan(0);
     }
+  });
+
+  it('describes every option and rejects unknown keys at every level', () => {
+    for (const object of schema.flatMap(objects)) {
+      expect(object.additionalProperties).toBe(false);
+      for (const option of Object.values(object.properties ?? {})) {
+        expect(option.description?.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('takes no options exactly when it has no defaults', () => {
+    expect(schema.length === 0).toBe(rule.meta?.defaultOptions === undefined);
   });
 });
 

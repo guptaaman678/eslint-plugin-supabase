@@ -249,8 +249,18 @@ describe('§6.5: tracing the client to its origin', () => {
   });
 
   it('step 5: stops on a chain too long to follow', () => {
-    const chain = Array.from({ length: 17 }, () => ".schema('app')").join('');
-    expect(only(`${CLIENT}void supabase${chain}.from('scores').select();`)).toEqual(NO_CLIENT);
+    const chain = (length: number) => Array.from({ length }, () => ".schema('app')").join('');
+    expect(only(`${CLIENT}void supabase${chain(17)}.from('scores').select();`)).toEqual(NO_CLIENT);
+    expect(only(`${CLIENT}void supabase${chain(16)}.from('scores').select();`)).toEqual(NO_CLIENT);
+    expect(only(`${CLIENT}void supabase${chain(15)}.from('scores').select();`)).toEqual(CLIENT_KEY);
+  });
+
+  it('does not read the key argument of a project factory', () => {
+    const code =
+      "import { createClient } from '@supabase/supabase-js';\n" +
+      'function makeDb(url: string, key: string) {\n  return createClient(url, key);\n}\n' +
+      "void makeDb('http://localhost', process.env.SUPABASE_SERVICE_ROLE_KEY!).from('todos').select();\n";
+    expect(only(code)).toEqual(UNKNOWN);
   });
 });
 

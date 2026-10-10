@@ -49,6 +49,33 @@ describe('table operations', () => {
     });
   });
 
+  it('stops the chain at a computed method', () => {
+    expect(one("void supabase.from('todos').update({})['eq']('id', 1);")).toMatchObject({
+      operation: 'update',
+      filtered: false,
+    });
+    // `[select]` reads the variable `select`, not the method of that name.
+    const line =
+      "const select = 'select' as const;\nvoid supabase.from('todos').insert({})[select]();";
+    expect(one(line)).toMatchObject({ operation: 'insert', returning: false });
+  });
+
+  it('does not take a method used as a constructor for an operation', () => {
+    const line = "// @ts-expect-error\nvoid new (supabase.from('todos').select)();";
+    expect(one(line)).toMatchObject({ skip: 'unknown-operation', operation: undefined });
+  });
+
+  it('reads no filter or select after a method that is not an operation', () => {
+    // The directive keeps the analysed code type-correct apart from `nope`.
+    const line = "// @ts-expect-error\nvoid supabase.from('todos').nope().select();";
+    expect(one(line)).toMatchObject({
+      skip: 'unknown-operation',
+      operation: undefined,
+      filtered: false,
+      returning: false,
+    });
+  });
+
   it('records filters after select too', () => {
     expect(one("void supabase.from('todos').select().eq('id', 1).order('id');")).toMatchObject({
       operation: 'select',
