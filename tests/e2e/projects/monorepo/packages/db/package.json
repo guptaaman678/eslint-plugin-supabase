@@ -1,0 +1,5 @@
+{
+  "name": "@e2e/db",
+  "private": true,
+  "type": "module"
+}

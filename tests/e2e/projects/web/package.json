@@ -1,0 +1,5 @@
+{
+  "name": "e2e-web",
+  "private": true,
+  "type": "module"
+}

@@ -1,0 +1,64 @@
+{
+  "results": {
+    "app/(tabs)/profile.tsx": [
+      {
+        "line": 8,
+        "column": 26,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.audit_log` has row level security on and no select policy for anon or authenticated in your migrations, so this read returns no rows and no error. Add a select policy, or read it through a function or a server-side client."
+      },
+      {
+        "line": 13,
+        "column": 3,
+        "ruleId": "supabase/no-unsent-query",
+        "severity": 2,
+        "message": "This Supabase storage download is lazy and is never awaited or `.then()`-ed, so the request is never sent. Use `await`, or call `.then()` to send it without waiting."
+      },
+      {
+        "line": 17,
+        "column": 10,
+        "ruleId": "supabase/realtime-table-published",
+        "severity": 2,
+        "message": "`public.audit_log` is not in the `supabase_realtime` publication in your migrations, so this subscription connects and never receives an event. Add it in a migration: `alter publication supabase_realtime add table public.audit_log;`"
+      },
+      {
+        "line": 17,
+        "column": 10,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.audit_log` has row level security on and no select policy for anon or authenticated in your migrations, so this subscription receives no insert or update events, and delete events arrive with only the primary key. Add a select policy."
+      }
+    ],
+    "app/(tabs)/scores.tsx": [
+      {
+        "line": 9,
+        "column": 3,
+        "ruleId": "supabase/no-unsent-query",
+        "severity": 2,
+        "message": "This Supabase query is lazy and is never awaited or `.then()`-ed, so the request is never sent. Use `await`, or call `.then()` to send it without waiting."
+      },
+      {
+        "line": 9,
+        "column": 3,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.scores` has row level security on and no update policy (or no select policy, which updates need to find rows) for anon or authenticated in your migrations, so this update changes no rows and returns no error. Add an update policy and a select policy, or run it through a function or a server-side client."
+      },
+      {
+        "line": 13,
+        "column": 9,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.scores` has row level security on and no update policy (or no select policy, which updates need to find rows) for anon or authenticated in your migrations, so this update changes no rows and returns no error. Add an update policy and a select policy, or run it through a function or a server-side client."
+      }
+    ],
+    "eslint.config.mjs": [],
+    "lib/supabase.ts": []
+  },
+  "stats": {
+    "files": 3,
+    "calls": 7,
+    "skips": {}
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "results": {
+    "apps/web/src/orders.ts": [
+      {
+        "line": 15,
+        "column": 9,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.orders` has row level security on and no update policy (or no select policy, which updates need to find rows) for anon or authenticated in your migrations, so this update changes no rows and returns no error. Add an update policy and a select policy, or run it through a function or a server-side client."
+      }
+    ],
+    "apps/worker/src/jobs.ts": [],
+    "eslint.config.mjs": [],
+    "packages/db/src/client.ts": []
+  },
+  "stats": {
+    "files": 3,
+    "calls": 7,
+    "skips": {
+      "publication-uncertain": 1,
+      "unknown-relation": 1
+    }
+  }
+}

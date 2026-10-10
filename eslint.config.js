@@ -6,7 +6,16 @@ import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**', '.changeset/**'] },
+  // The e2e projects are linted by `tests/e2e/projects.test.ts` with their own configs.
+  {
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      'node_modules/**',
+      '.changeset/**',
+      'tests/e2e/projects/**',
+    ],
+  },
   js.configs.recommended,
   {
     files: ['**/*.ts'],

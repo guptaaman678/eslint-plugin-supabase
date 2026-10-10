@@ -1,0 +1,41 @@
+{
+  "results": {
+    "eslint.config.mjs": [],
+    "src/client.ts": [],
+    "src/todos.ts": [
+      {
+        "line": 13,
+        "column": 9,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.todos` has row level security on and no delete policy (or no select policy, which deletes need to find rows) for anon or authenticated in your migrations, so this delete removes no rows and returns no error. Add a delete policy and a select policy, or run it through a function or a server-side client."
+      },
+      {
+        "line": 13,
+        "column": 9,
+        "ruleId": "supabase/table-granted",
+        "severity": 2,
+        "message": "authenticated has no delete privilege on `public.todos` in your migrations, so this call fails with 42501 (permission denied). Fix in a migration: `grant delete on public.todos to authenticated;`"
+      },
+      {
+        "line": 17,
+        "column": 26,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.scores` has row level security on (RLS is on via the `ensure_rls` trigger) and no select policy for anon or authenticated in your migrations, so this read returns no rows and no error. Add a select policy, or read it through a function or a server-side client."
+      },
+      {
+        "line": 22,
+        "column": 10,
+        "ruleId": "supabase/rls-readable",
+        "severity": 2,
+        "message": "`public.messages` has row level security on (RLS is on via the `ensure_rls` trigger) and no select policy for anon or authenticated in your migrations, so this subscription receives no insert or update events, and delete events arrive with only the primary key. Add a select policy."
+      }
+    ]
+  },
+  "stats": {
+    "files": 2,
+    "calls": 5,
+    "skips": {}
+  }
+}

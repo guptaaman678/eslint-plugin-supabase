@@ -1,0 +1,9 @@
+{
+  "name": "e2e-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
