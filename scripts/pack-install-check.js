@@ -1,83 +1,119 @@
 #!/usr/bin/env node
-// CI job "package" (spec §6.9): pack the built tarball, install it into a throwaway project
-// alongside ESLint and typescript-eslint, and lint a fixture through it.
+// CI job "package" (spec §6.9): pack the built tarball, check its entries against the `files`
+// allowlist, install it into a throwaway project alongside ESLint, typescript-eslint and
+// supabase-js, and lint a fixture app through it.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-
-// Stub until the peer dependency ranges are final: a placeholder range cannot be installed.
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-if (Object.values(pkg.peerDependencies ?? {}).some((range) => range.startsWith('TODO'))) {
-  console.log('pack-check: skipped, peerDependencies are still placeholders');
-  process.exit(0);
-}
+const env = { ...process.env, NO_COLOR: '1' };
+
+// §6.9, plus `stub/` for the `require` condition that points CommonJS users to `import()` (T3.5).
+// npm always adds `package.json`.
+const allowedFiles = new Set(['package.json', 'README.md', 'LICENSE', 'CHANGELOG.md']);
+const allowedDirs = ['dist/', 'stub/'];
+const requiredFiles = [
+  'package.json',
+  'README.md',
+  'LICENSE',
+  'CHANGELOG.md',
+  'dist/index.js',
+  'dist/index.d.ts',
+  'stub/require.cjs',
+];
+
+// The fixture app is the `web` e2e project; the versions are the ones the repo tests against.
+const fixture = join(root, 'tests', 'e2e', 'projects', 'web');
+const expected = JSON.parse(
+  readFileSync(join(root, 'tests', 'e2e', 'expected', 'web.json'), 'utf8'),
+).results;
+const installs = [
+  'eslint',
+  'typescript-eslint',
+  '@typescript-eslint/parser',
+  'typescript',
+  '@supabase/supabase-js',
+  '@supabase/ssr',
+  '@types/node',
+].map((name) => `${name}@${pkg.devDependencies[name]}`);
 
 function run(cmd, args, opts = {}) {
-  return execFileSync(cmd, args, { cwd: root, encoding: 'utf8', ...opts });
+  return execFileSync(cmd, args, { cwd: root, encoding: 'utf8', env, ...opts });
+}
+
+function fail(message) {
+  throw new Error(`pack-check: ${message}`);
+}
+
+// `npm pack --json` prints an array with one object per package; find it by shape, not position.
+function parsePack(output) {
+  const start = output.indexOf('[');
+  const parsed = start === -1 ? undefined : JSON.parse(output.slice(start));
+  const entry = Array.isArray(parsed)
+    ? parsed.find((item) => typeof item?.filename === 'string' && Array.isArray(item?.files))
+    : undefined;
+  if (!entry) fail(`could not find the pack result in the output of npm pack\n${output}`);
+  return entry;
 }
 
 run('npm', ['run', 'build']);
-const packOut = run('npm', ['pack', '--json']);
-const [{ filename }] = JSON.parse(packOut);
-const tarballPath = join(root, filename);
+const packed = parsePack(run('npm', ['pack', '--json']));
+const tarballPath = join(root, packed.filename);
 
 const work = mkdtempSync(join(tmpdir(), 'eslint-plugin-supabase-pack-'));
 try {
-  writeFileSync(
-    join(work, 'package.json'),
-    JSON.stringify({ name: 'pack-check', private: true, type: 'module' }, null, 2),
+  const paths = packed.files.map((file) => file.path);
+  const extra = paths.filter(
+    (path) => !allowedFiles.has(path) && !allowedDirs.some((dir) => path.startsWith(dir)),
   );
-  execFileSync('npm', ['install', tarballPath, 'eslint@10.12.0', 'typescript-eslint@8.71.1'], {
-    cwd: work,
-    stdio: 'inherit',
-  });
+  if (extra.length > 0) fail(`files outside the allowlist in the tarball: ${extra.join(', ')}`);
+  const missing = requiredFiles.filter((path) => !paths.includes(path));
+  if (missing.length > 0) fail(`files missing from the tarball: ${missing.join(', ')}`);
+  console.log(
+    `pack-check: ${packed.filename}: ${packed.entryCount} files, ` +
+      `size ${packed.size} bytes, unpacked ${packed.unpackedSize} bytes`,
+  );
 
-  // `recommended` covers TypeScript files and its rules need type information.
-  writeFileSync(
-    join(work, 'eslint.config.js'),
-    [
-      "import supabase from 'eslint-plugin-supabase';",
-      "import tseslint from 'typescript-eslint';",
-      'export default [',
-      '  {',
-      "    files: ['**/*.ts'],",
-      '    languageOptions: {',
-      '      parser: tseslint.parser,',
-      '      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },',
-      '    },',
-      '  },',
-      '  supabase.configs.recommended,',
-      '];',
-      '',
-    ].join('\n'),
+  cpSync(fixture, work, { recursive: true });
+  execFileSync(
+    'npm',
+    ['install', '--ignore-scripts', '--no-audit', '--no-fund', tarballPath, ...installs],
+    { cwd: work, stdio: 'inherit', env },
   );
-  writeFileSync(
-    join(work, 'tsconfig.json'),
-    JSON.stringify({ compilerOptions: { strict: true, noEmit: true }, include: ['fixture.ts'] }),
-  );
-  writeFileSync(join(work, 'fixture.ts'), 'export const x: number = 1;\n');
 
-  execFileSync('npx', ['eslint', '--max-warnings', '0', 'fixture.ts'], {
-    cwd: work,
-    stdio: 'inherit',
-  });
+  // Lint the fixture app through the installed package, as a user's script would.
+  cpSync(join(root, 'tests', 'e2e', 'lint-project.mjs'), join(work, 'lint-project.mjs'));
+  const linted = JSON.parse(
+    execFileSync('node', ['lint-project.mjs'], { cwd: work, env, encoding: 'utf8' }),
+  );
+  delete linted['lint-project.mjs'];
+  if (!isDeepStrictEqual(linted, expected)) {
+    fail(
+      `the fixture app did not lint as expected\nexpected ${JSON.stringify(expected, null, 2)}\n` +
+        `actual ${JSON.stringify(linted, null, 2)}`,
+    );
+  }
+  const reported = Object.values(linted).flat().length;
+  console.log(`pack-check: the fixture app reports the expected ${reported} messages`);
 
   // ADR-016: a CommonJS config exports a Promise of the config; a require() of the plugin fails
   // with a message that shows that form.
   const importForm =
     "module.exports = import('eslint-plugin-supabase').then(({ default: supabase }) => [supabase.configs.recommended]);";
   writeFileSync(join(work, 'promise.cjs'), `${importForm}\n`);
+  const target = join('src', 'lib', 'supabase.ts');
   const printed = execFileSync(
     'npx',
-    ['eslint', '--config', 'promise.cjs', '--print-config', 'fixture.ts'],
-    { cwd: work, encoding: 'utf8' },
+    ['eslint', '--config', 'promise.cjs', '--print-config', target],
+    { cwd: work, encoding: 'utf8', env },
   );
   if (!printed.includes('supabase/no-unsent-query')) {
-    throw new Error('pack-check: the CommonJS Promise config did not load the plugin');
+    fail('the CommonJS Promise config did not load the plugin');
   }
   writeFileSync(
     join(work, 'require.cjs'),
@@ -85,13 +121,15 @@ try {
   );
   const required = spawnSync(
     'npx',
-    ['eslint', '--config', 'require.cjs', '--print-config', 'fixture.ts'],
-    { cwd: work, encoding: 'utf8' },
+    ['eslint', '--config', 'require.cjs', '--print-config', target],
+    {
+      cwd: work,
+      encoding: 'utf8',
+      env,
+    },
   );
   if (required.status === 0 || !required.stderr.includes(importForm)) {
-    throw new Error(
-      `pack-check: require() of the plugin did not fail with the import() form\n${required.stderr}`,
-    );
+    fail(`require() of the plugin did not fail with the import() form\n${required.stderr}`);
   }
   console.log('pack-check: OK');
 } finally {
