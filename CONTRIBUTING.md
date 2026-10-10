@@ -140,6 +140,32 @@ user-visible change needs a changeset (`npx changeset`); internal-only changes
 do not. Releases follow SemVer and stay `0.x` until the project's stability
 promise is published.
 
+### How a release happens
+
+`.github/workflows/release.yml` runs on every push to `main`. While changesets
+are pending it opens or updates a "chore: version packages" pull request that
+bumps the version and writes the changelog. A pull request opened with the
+workflow's own token starts no workflows, so CI does not run on it by itself:
+close and reopen it (or push a commit to its branch) to run CI before merging.
+
+Once that pull request is merged, `scripts/release-state.mjs` decides what
+happens:
+
+- **0.1.0 is published by hand.** The workflow skips it. The maintainer
+  publishes it from a fresh clone of `main` at the merge commit (`npm ci`,
+  `npm run build`, `npm pkg delete publishConfig.provenance`,
+  `npm publish --access public`), pushes the tag `v0.1.0` and creates the
+  GitHub release. 0.1.0 therefore carries no provenance attestation.
+- **Every later version is staged.** The workflow runs
+  `npm stage publish --provenance --access public` through npm trusted
+  publishing (OIDC, no token; the trusted publisher allows staging only) and
+  pushes the tag `vX.Y.Z`. The version is not live until the maintainer
+  approves it on npmjs.com (or with `npm stage approve`) using the security
+  key. Then the maintainer creates the GitHub release from the changelog entry.
+- A version that is already live or already tagged is never staged again.
+  `npm view` cannot see a staged version, so the tag is what prevents a second
+  stage. If a staged version is rejected, delete its tag before releasing again.
+
 ## Maintenance policy
 
 TODO(T13.2): this section is filled in when the project's maintenance policy

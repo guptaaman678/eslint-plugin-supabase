@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    steps:
+      # The checkout keeps its credentials: changesets pushes the version branch with the git CLI
+      # and the tag step pushes `v<version>`.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+
+      # Node 24 ships npm 11.x; `npm stage` needs npm 11.15.0 or later. No registry-url:
+      # authentication is npm trusted publishing (OIDC), no token.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      # Versioning only. Changesets cannot publish through npm staged publishing, so the steps
+      # below stage the release instead of `changeset publish`. A PR opened with GITHUB_TOKEN
+      # starts no workflows: CONTRIBUTING.md says how to run CI on it.
+      - name: Create or update the Version Packages PR
+        id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
+          push-with-git-cli: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # changesets/action v2 names this output `has-changesets` (v1 used `hasChangesets`);
+      # reading the old name yields an empty string, so the release steps would never run.
+      # scripts/release-state.mjs skips 0.1.0 (published by hand), live and tagged versions.
+      - name: Work out the release state
+        id: state
+        if: steps.changesets.outputs.has-changesets == 'false'
+        run: |
+          git fetch --tags --force origin
+          node scripts/release-state.mjs
+
+      # Uploads the release to npm's staging queue. It goes live only when a maintainer approves
+      # it on npmjs.com (or `npm stage approve`) with the security key.
+      - name: Stage the release on npm
+        if: steps.state.outputs.stage == 'true'
+        run: |
+          npm --version
+          npm stage publish --provenance --access public
+
+      # The tag stops a second stage on later pushes: `npm view` does not see a staged version.
+      - name: Tag the staged release
+        if: steps.state.outputs.stage == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.state.outputs.version }}"
+          git push origin "v${{ steps.state.outputs.version }}"
