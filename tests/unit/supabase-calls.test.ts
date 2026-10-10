@@ -56,6 +56,11 @@ describe('table operations', () => {
       returning: false,
       reads: true,
     });
+    // A second select() on a read is not a write returning rows.
+    expect(one("void supabase.from('todos').select().select('id');")).toMatchObject({
+      operation: 'select',
+      returning: false,
+    });
   });
 
   it('insert, and insert(...).select() which is not a read', () => {
@@ -335,9 +340,13 @@ describe('schemas', () => {
         'class MyClient extends SupabaseClient {}',
         'declare const mine: MyClient;',
         "void mine.from('todos').select();",
+        // A project's own factory with supabase-js's argument shape: its options are its own.
+        "declare function makeOwn(url: string, key: string, options: { db: { schema: 'app' } }): SupabaseClient;",
+        "const fromOwn = makeOwn('u', 'k', { db: { schema: 'app' } });",
+        "void fromOwn.from('todos').select();",
       ].join('\n');
     const found = calls(code);
-    expect(found).toHaveLength(7);
+    expect(found).toHaveLength(8);
     for (const call of found) expect(call).toMatchObject({ schemas: ['public'], skip: undefined });
   });
 

@@ -138,10 +138,12 @@ describe('functionNames', () => {
     ['helpers.join = () => 1;', ['join']],
     ['class A { #join; static { new A().#join = () => 1; } }', []],
     ['helpers[key] = () => 1;', []],
+    ['({ join } = function () {});', []],
     ['[() => 1];', []],
     ['run(() => 1);', []],
   ])('%s -> %j', (code, names) => {
-    expect(functionNames(firstFunction(code))).toEqual(names);
+    // Strict: `[undefined]` is not an empty list of names.
+    expect(functionNames(firstFunction(code))).toStrictEqual(names);
   });
 
   it('is empty for a node that is not a function', () => {

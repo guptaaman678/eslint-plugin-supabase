@@ -14,6 +14,8 @@ describe('globToRegExp', () => {
     ['src/**/*.ts', 'src/a.tsx', false],
     ['**', 'any/depth/file.ts', true],
     ['src/**', 'src/a/b.ts', true],
+    ['src/**/a.ts', 'src/xa.ts', false],
+    ['a*', 'b', false],
     ['*.ts', 'a.ts', true],
     ['*.ts', 'src/a.ts', false],
     ['lib/?.ts', 'lib/a.ts', true],

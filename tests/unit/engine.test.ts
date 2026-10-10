@@ -51,6 +51,8 @@ describe('checkSnapshot', () => {
   it.each([0, 2])('refuses snapshotVersion %i with a message that says what to install', (v) => {
     const call = () => checkSnapshot({ snapshotVersion: v }, '0.9.0');
     expect(call).toThrow(SnapshotVersionError);
+    // The error carries its own name, not Error's.
+    expect(call).toThrow(expect.objectContaining({ name: 'SnapshotVersionError' }));
     expect(call).toThrow(
       `eslint-plugin-supabase reads schema snapshot version 1, but supabase-grants-lint 0.9.0 ` +
         `returned version ${v}. Install supabase-grants-lint ^0.3.0, the range ` +

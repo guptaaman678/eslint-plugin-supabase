@@ -4,7 +4,12 @@ import type { ESLint } from 'eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createWithProject, discoveredHash } from '../../src/configs/project.js';
 import { createRecommended, TYPESCRIPT_FILES } from '../../src/configs/recommended.js';
-import { inputsFingerprint, migrationsHash, watchedInputs } from '../../src/schema/inputs.js';
+import {
+  inputsContentHash,
+  inputsFingerprint,
+  migrationsHash,
+  watchedInputs,
+} from '../../src/schema/inputs.js';
 import { fakeEngine } from '../harness/fake-engine.js';
 import { TempProject } from '../harness/temp-project.js';
 
@@ -133,6 +138,32 @@ describe('watchedInputs and inputsFingerprint', () => {
       watchedInputs(engine, { projectDir: project.dir }),
     );
     expect(fingerprint).toMatch(/^supabase\/migrations\/0001_init\.sql\t\d+\t[\d.]+$/);
+  });
+
+  it('marks a missing input and carries the listing error', () => {
+    const { project } = setup();
+    const gone = path.join(project.dir, 'gone.sql');
+    expect(inputsFingerprint(project.dir, { files: [gone] })).toBe('gone.sql\tmissing');
+    expect(inputsFingerprint(project.dir, { error: 'no migrations' })).toBe(
+      'error\tno migrations',
+    );
+  });
+});
+
+describe('inputsContentHash', () => {
+  it('is a sha256 hex string that tells errors apart', () => {
+    const { project } = setup();
+    const first = inputsContentHash(project.dir, { error: 'first' });
+    expect(first).toMatch(/^[0-9a-f]{64}$/);
+    expect(inputsContentHash(project.dir, { error: 'second' })).not.toBe(first);
+  });
+
+  it('tells a missing input from an empty one', () => {
+    const { project } = setup();
+    const file = path.join(project.dir, 'later.sql');
+    const missing = inputsContentHash(project.dir, { files: [file] });
+    project.write('later.sql', '');
+    expect(inputsContentHash(project.dir, { files: [file] })).not.toBe(missing);
   });
 });
 

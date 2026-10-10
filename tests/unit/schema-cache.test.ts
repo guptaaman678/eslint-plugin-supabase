@@ -1,6 +1,6 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FRESHNESS_MS, SnapshotCache } from '../../src/schema/cache.js';
 import type { Engine } from '../../src/schema/engine-api.js';
 import { fakeEngine } from '../harness/fake-engine.js';
@@ -55,6 +55,17 @@ describe('SnapshotCache', () => {
     expect(get()).toBe(first);
     later();
     expect(get()).toBe(first);
+    expect(engine.replays).toBe(1);
+  });
+
+  it('starts a new freshness window after checking unchanged files', () => {
+    const { engine, get, later } = setup();
+    const first = get();
+    const listings = vi.spyOn(engine, 'listReplayInputs');
+    later();
+    expect(get()).toBe(first);
+    expect(get()).toBe(first);
+    expect(listings).toHaveBeenCalledTimes(1);
     expect(engine.replays).toBe(1);
   });
 

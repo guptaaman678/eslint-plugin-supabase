@@ -135,20 +135,21 @@ describe('findProperty and resolveObject', () => {
         const object = resolveObject(checker, init);
         if (object === undefined) return 'not an object';
         const lookup = findProperty(object, 'db');
-        if ('found' in lookup) return lookup.found.getText();
-        return 'absent' in lookup ? 'absent' : 'unknown';
+        // The exported lookup shape itself, not only the key a caller tests.
+        return 'found' in lookup ? lookup.found.getText() : lookup;
       },
     );
+    const unknown = { unknown: true };
     expect(found).toEqual({
       plain: '1',
       quoted: '1',
       shorthand: 'db',
-      absent: 'absent',
+      absent: { absent: true },
       spreadBefore: '1',
-      spreadAfter: 'unknown',
-      computed: 'unknown',
-      method: 'unknown',
-      getter: 'unknown',
+      spreadAfter: unknown,
+      computed: unknown,
+      method: unknown,
+      getter: unknown,
       twice: '2',
       aliased: '2',
       notObject: 'not an object',

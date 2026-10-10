@@ -13,6 +13,7 @@ const URL_ARG = "'http://localhost:54321'";
 function resolveAll(
   code: string,
   raw: Record<string, unknown> = {},
+  projectDir = PROJECT,
 ): (ClientRoles & { client: string })[] {
   const settings = parseSettings(raw, PROJECT);
   return collect<TSESTree.CallExpression, ClientRoles & { client: string }>(
@@ -22,7 +23,7 @@ function resolveAll(
       const call = analyzeCall(services, node);
       if (call === undefined) return undefined;
       const client = text((node.callee as TSESTree.MemberExpression).object);
-      return { client, ...resolveClientRoles(services, call, settings, PROJECT) };
+      return { client, ...resolveClientRoles(services, call, settings, projectDir) };
     },
   );
 }
@@ -91,6 +92,7 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     ["'eyJ0ZXN0'", '', UNKNOWN],
     ["'sb_temp_test'", '', UNKNOWN],
     ['process.env[name]!', 'declare const name: string;', UNKNOWN],
+    ['process.env[serviceRoleKey]!', 'declare const serviceRoleKey: string;', UNKNOWN],
     ['getKey()', 'declare function getKey(): string;', UNKNOWN],
     ["keys.get('SUPABASE_SERVICE_ROLE_KEY')!", 'declare const keys: Map<string, string>;', UNKNOWN],
     ["Deno.env.read('SUPABASE_SERVICE_ROLE_KEY')", DENO, UNKNOWN],
@@ -108,6 +110,14 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     // adminKey's own name says nothing; the env variable it is read from does.
     const imported = "import { adminKey as k } from './admin';";
     expect(only(keyed('k', imported))).toEqual(SERVICE);
+  });
+
+  it('follows nested fallbacks up to the depth limit', () => {
+    const nested = (levels: number) =>
+      'a ?? ('.repeat(levels) + 'process.env.SUPABASE_SERVICE_ROLE_KEY!' + ')'.repeat(levels);
+    const prelude = 'declare const a: string | undefined;';
+    expect(only(keyed(nested(15), prelude))).toEqual(SERVICE);
+    expect(only(keyed(nested(16), prelude))).toEqual(UNKNOWN);
   });
 
   it('stops on a const cycle', () => {
@@ -280,6 +290,10 @@ describe('§6.5 step 1: settings.supabase.clients', () => {
     expect(only(`${CLIENT}void supabase.from('todos').select();`, vendor)).toEqual(CLIENT_KEY);
     const outside = { clients: [{ module: '../**', role: 'service_role' }] };
     expect(only(`${CLIENT}void supabase.from('todos').select();`, outside)).toEqual(CLIENT_KEY);
+    // With the repository root as the project, supabase-js's declarations are inside it.
+    const root = fileURLToPath(new URL('../..', import.meta.url));
+    const found = resolveAll(`${CLIENT}void supabase.from('todos').select();`, vendor, root);
+    expect(found.map(rolesOnly)).toEqual([CLIENT_KEY]);
   });
 
   it('takes the first matching entry', () => {
