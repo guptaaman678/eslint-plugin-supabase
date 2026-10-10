@@ -60,3 +60,36 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run pack-check
+
+  compat:
+    name: compat (eslint ${{ matrix.eslint }}, typescript ${{ matrix.typescript }}, supabase-js ${{ matrix.supabase.js }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # The ends of the peer ranges (ADR-011) and two supabase-js 2.x minors (ADR-002, ADR-003).
+        # `ssr` is the newest @supabase/ssr whose peer range admits that supabase-js.
+        eslint: ['9.15.0', '9.39.5', '^10']
+        typescript: ['5.8.2', '<6.1']
+        supabase:
+          - { js: '^2', ssr: 'latest' }
+          - { js: '2.58.0', ssr: '0.7.0' }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: >-
+          node scripts/compat-check.mjs --eslint "$COMPAT_ESLINT" --typescript "$COMPAT_TYPESCRIPT"
+          --supabase-js "$COMPAT_SUPABASE_JS" --ssr "$COMPAT_SUPABASE_SSR"
+        env:
+          COMPAT_ESLINT: ${{ matrix.eslint }}
+          COMPAT_TYPESCRIPT: ${{ matrix.typescript }}
+          COMPAT_SUPABASE_JS: ${{ matrix.supabase.js }}
+          COMPAT_SUPABASE_SSR: ${{ matrix.supabase.ssr }}

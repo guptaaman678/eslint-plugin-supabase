@@ -47,6 +47,14 @@ snapshot fakes of the schema view, independent of the rule-tester suites.
 Whole synthetic projects live under `tests/e2e/projects/<app>/` and are
 linted through the ESLint Node API with exact expected messages.
 
+The CI `compat` job runs the same projects against the packed plugin with the
+ends of the supported ranges: ESLint 9.15.0, 9.39.5 and the latest 10.x,
+TypeScript 5.8.2 and the newest below 6.1, supabase-js 2.58.0 and the latest
+2.x. Run one combination locally with
+`node scripts/compat-check.mjs --eslint 9.15.0 --typescript 5.8.2 --supabase-js 2.58.0 --ssr 0.7.0`.
+Migrations saved with CRLF line endings live in `tests/fixtures/schemas/crlf/`,
+which `.gitattributes` keeps byte for byte.
+
 Coverage thresholds: 100% lines and branches on `src/rules`, `src/schema`,
 `src/roles` and `src/supabase`; 95% overall (`npm run test:coverage`).
 

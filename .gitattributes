@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# Migrations saved with CRLF line endings: committed and checked out byte for byte.
+tests/fixtures/schemas/crlf/** -text

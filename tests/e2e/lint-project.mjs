@@ -1,7 +1,9 @@
 // Lints the project in the working directory through the ESLint Node API, as a user's script
 // would, and prints each linted file (relative, with `/` separators) and its messages as JSON.
 // `tests/e2e/projects.test.ts` runs it in a fresh process per project, so the plugin loads once
-// per thread and writes its stats file at exit, as in a real run.
+// per thread and writes its stats file at exit, as in a real run. `scripts/compat-check.mjs`
+// runs it under older ESLint versions too, which reject the `concurrency` option (added in
+// 9.34.0), so `off` leaves the option out.
 import path from 'node:path';
 import { ESLint } from 'eslint';
 
@@ -9,7 +11,7 @@ const [concurrency = 'off'] = process.argv.slice(2);
 const cwd = process.cwd();
 const eslint = new ESLint({
   cwd,
-  concurrency: concurrency === 'off' ? 'off' : Number(concurrency),
+  ...(concurrency === 'off' ? {} : { concurrency: Number(concurrency) }),
 });
 const results = await eslint.lintFiles(['.']);
 
