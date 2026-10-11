@@ -8,6 +8,8 @@ found by reading your migrations, not by calling your database.
 
 Not affiliated with or endorsed by Supabase.
 
+![ESLint reporting a voided insert that is never sent, and a realtime subscription to a table that is not in the supabase_realtime publication](./media/demo.gif)
+
 ## Status
 
 Pre-release. Nothing is published to npm yet; see the project's

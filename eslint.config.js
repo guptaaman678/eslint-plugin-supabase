@@ -6,7 +6,8 @@ import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default tseslint.config(
-  // The e2e projects are linted by `tests/e2e/projects.test.ts` with their own configs.
+  // The e2e projects are linted by `tests/e2e/projects.test.ts` and the demo project by
+  // `media/demo/check.mjs`, each with its own config.
   {
     ignores: [
       'dist/**',
@@ -17,6 +18,7 @@ export default tseslint.config(
       '.stryker-tmp/**',
       '.changeset/**',
       'tests/e2e/projects/**',
+      'media/demo/**',
     ],
   },
   js.configs.recommended,
