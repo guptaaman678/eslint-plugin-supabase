@@ -46,7 +46,8 @@ runs as `anon` or `authenticated` (the default role set, `settings.supabase.defa
 client created with a service role or secret key runs as `service_role`. The service role bypasses
 row level security but not grants, so its calls are checked too. A call is reported only when no
 role in the set passes; the message names the role that misses the fewest privileges, and the
-grant that would fix it. Map your own client factories with `settings.supabase.clients`.
+grant that would fix it. Map your own client factories with
+[`settings.supabase.clients`](../configuration.md#clients).
 
 Examples of **incorrect** code for this rule:
 

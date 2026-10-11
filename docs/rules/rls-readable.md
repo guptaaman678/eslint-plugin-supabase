@@ -37,7 +37,7 @@ runs as `anon` or `authenticated` (the default role set, `settings.supabase.defa
 client created with a service role or secret key bypasses RLS and is never reported. A call is
 reported only when **no** role in the set passes, so a table readable by `authenticated` alone is
 fine for a client that may be signed in. Map your own client factories with
-`settings.supabase.clients`.
+[`settings.supabase.clients`](../configuration.md#clients).
 
 Examples of **incorrect** code for this rule:
 
