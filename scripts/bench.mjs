@@ -240,19 +240,21 @@ const budgets = [
     limit: 10,
     value: worst(100, 'warmP95'),
   },
+  // The share budgets leave out each thread's first replay, which the cold budgets cover. The
+  // share with it included is still reported in the measures table.
   {
     id: 'share-100',
-    what: 'Plugin rule time over typescript-eslint alone, 200 files, 100 migrations',
+    what: "Plugin rule time over typescript-eslint alone, without each thread's first replay, 200 files, 100 migrations",
     unit: '%',
     limit: 10,
-    value: worst(100, 'sharePct'),
+    value: worst(100, 'shareWarmPct'),
   },
   {
     id: 'share-500',
-    what: 'Plugin rule time over typescript-eslint alone, 200 files, 500 migrations',
+    what: "Plugin rule time over typescript-eslint alone, without each thread's first replay, 200 files, 500 migrations",
     unit: '%',
     limit: 10,
-    value: worst(500, 'sharePct'),
+    value: worst(500, 'shareWarmPct'),
   },
   {
     id: 'memory-500',
