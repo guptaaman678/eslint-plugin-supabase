@@ -73,6 +73,18 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     ['config.service_role', 'declare const config: { service_role: string };', SERVICE],
     ['secretKey', 'declare const secretKey: string;', SERVICE],
     ['(serviceRole satisfies string)', 'declare const serviceRole: string;', SERVICE],
+    ['process.env.SUPABASE_SERVICE_KEY!', '', SERVICE],
+    ['serviceKey', 'declare const serviceKey: string;', SERVICE],
+    ['service_key', 'declare const service_key: string;', SERVICE],
+    // A string literal first argument of any call counts as a name (ADR-022 item 4).
+    ["keys.get('SUPABASE_SERVICE_ROLE_KEY')!", 'declare const keys: Map<string, string>;', SERVICE],
+    ["Deno.env.read('SUPABASE_SERVICE_ROLE_KEY')", DENO, SERVICE],
+    [
+      "requireServerEnvironment('SUPABASE_SERVICE_ROLE_KEY')",
+      'declare function requireServerEnvironment(name: string): string;',
+      SERVICE,
+    ],
+    ['getEnv(`SUPABASE_SERVICE_KEY`)', 'declare function getEnv(name: string): string;', SERVICE],
     // Step 3: anon and publishable names and the publishable prefix.
     ["'sb_publishable_test'", '', CLIENT_KEY],
     ['import.meta.env.VITE_SUPABASE_ANON_KEY', '', CLIENT_KEY],
@@ -80,6 +92,7 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     ["Deno.env.get('SUPABASE_ANON_KEY')", DENO, CLIENT_KEY],
     ['anonKey', 'declare const anonKey: string;', CLIENT_KEY],
     ['anon_key', 'declare const anon_key: string;', CLIENT_KEY],
+    ["getEnv('SUPABASE_ANON_KEY')", 'declare function getEnv(name: string): string;', CLIENT_KEY],
     // Fallbacks: both sides count, and step 2 wins over step 3.
     ["process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''", '', SERVICE],
     ["'' || process.env.SUPABASE_ANON_KEY!", '', CLIENT_KEY],
@@ -96,8 +109,12 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     ['process.env[name]!', 'declare const name: string;', UNKNOWN],
     ['process.env[serviceRoleKey]!', 'declare const serviceRoleKey: string;', UNKNOWN],
     ['getKey()', 'declare function getKey(): string;', UNKNOWN],
-    ["keys.get('SUPABASE_SERVICE_ROLE_KEY')!", 'declare const keys: Map<string, string>;', UNKNOWN],
-    ["Deno.env.read('SUPABASE_SERVICE_ROLE_KEY')", DENO, UNKNOWN],
+    ["getEnv('SUPABASE_KEY')", 'declare function getEnv(name: string): string;', UNKNOWN],
+    [
+      "getEnv(name, 'SUPABASE_SERVICE_ROLE_KEY')",
+      'declare function getEnv(a: string, b: string): string;\ndeclare const name: string;',
+      UNKNOWN,
+    ],
     ['Deno.env.get()', DENO, UNKNOWN],
     ['Deno.env.get(name)', `${DENO}\ndeclare const name: string;`, UNKNOWN],
     ['`${prefix}_key`', 'declare const prefix: string;', UNKNOWN],
@@ -218,17 +235,18 @@ describe('§6.5: tracing the client to its origin', () => {
     ]);
   });
 
-  it('treats a project factory, method or await as an origin whose key is unknown', () => {
+  it('reads the clients a project factory or method returns, across files', () => {
     const code =
       "import { createAdminClient, createServerDb, Repo } from './admin';\n" +
       "void createAdminClient().from('todos').select();\n" +
       "async function list() {\n  const db = await createServerDb();\n  return db.from('todos').select();\n}\n" +
       "void new Repo().client().from('todos').select();\n" +
       'void list;\n';
+    // createServerDb returns Promise.resolve(...), which is not a client origin.
     expect(resolveAll(code)).toEqual([
-      { client: 'createAdminClient()', ...UNKNOWN },
+      { client: 'createAdminClient()', ...SERVICE },
       { client: 'db', ...UNKNOWN },
-      { client: 'new Repo().client()', ...UNKNOWN },
+      { client: 'new Repo().client()', ...CLIENT_KEY },
     ]);
   });
 
@@ -261,6 +279,135 @@ describe('§6.5: tracing the client to its origin', () => {
       'function makeDb(url: string, key: string) {\n  return createClient(url, key);\n}\n' +
       "void makeDb('http://localhost', process.env.SUPABASE_SERVICE_ROLE_KEY!).from('todos').select();\n";
     expect(only(code)).toEqual(UNKNOWN);
+  });
+
+  it('step 5: skips new of a class outside supabase-js, such as a Proxy', () => {
+    const code =
+      "import * as sb from '@supabase/supabase-js';\n" +
+      `${CLIENT}declare function getAdmin(): SupabaseClient;\n` +
+      'const admin = new Proxy({} as SupabaseClient, { get: (_, p) => Reflect.get(getAdmin(), p) });\n' +
+      "void admin.from('todos').select();\n" +
+      `void new sb.SupabaseClient(${URL_ARG}, 'sb_secret_test').from('todos').select();\n`;
+    expect(resolveAll(code)).toEqual([
+      { client: 'admin', ...NO_CLIENT },
+      { client: `new sb.SupabaseClient(${URL_ARG}, 'sb_secret_test')`, ...SERVICE },
+    ]);
+  });
+});
+
+describe('ADR-022: following a project factory to the clients it returns', () => {
+  const head = "import { createClient } from '@supabase/supabase-js';\n";
+  const call = (factory: string) => `void ${factory}().from('todos').select();\n`;
+  const secret = `createClient(${URL_ARG}, process.env.SUPABASE_SERVICE_ROLE_KEY!)`;
+  const anon = `createClient(${URL_ARG}, process.env.SUPABASE_ANON_KEY!)`;
+
+  it.each([
+    ['a function declaration', `function admin() {\n  return ${secret};\n}\n`, SERVICE],
+    ['an arrow with an expression body', `const admin = () => ${anon};\n`, CLIENT_KEY],
+    [
+      'a const alias of the returned client',
+      `function admin() {\n  const db = ${secret};\n  return db;\n}\n`,
+      SERVICE,
+    ],
+    [
+      'a null return for a missing URL',
+      `function admin() {\n  if (!process.env.URL) return null;\n  if (!process.env.KEY) return undefined;\n  return ${secret};\n}\n`,
+      SERVICE,
+    ],
+    [
+      'two returns of the same class',
+      `function admin(x: boolean) {\n  if (x) return ${secret};\n  return createClient(${URL_ARG}, 'sb_secret_test');\n}\n`,
+      SERVICE,
+    ],
+    [
+      'returns of nested functions, which are ignored',
+      `function admin() {\n  const other = () => { return ${anon}; };\n  void other;\n  return ${secret};\n}\n`,
+      SERVICE,
+    ],
+    [
+      'a lazy singleton in a module-level let',
+      `let cached: ReturnType<typeof createClient> | null = null;\nfunction admin() {\n  if (cached) return cached;\n  cached = ${secret};\n  return cached;\n}\n`,
+      SERVICE,
+    ],
+    [
+      'a lazy singleton assigned with ??=',
+      `let cached: ReturnType<typeof createClient> | undefined;\nfunction admin() {\n  return (cached ??= ${anon});\n}\n`,
+      CLIENT_KEY,
+    ],
+    [
+      'three factories deep',
+      `function a() { return ${secret}; }\nfunction b() { return a(); }\nfunction admin() { return b(); }\n`,
+      SERVICE,
+    ],
+  ])('decides by %s', (_, factory, expected) => {
+    expect(only(head + factory + call('admin'))).toEqual(expected);
+  });
+
+  it.each([
+    ['a conditional return', `function admin(x: boolean) {\n  return x ? null : ${secret};\n}\n`],
+    [
+      'returns of different classes',
+      `function admin(x: boolean) {\n  if (x) return ${anon};\n  return ${secret};\n}\n`,
+    ],
+    [
+      'an unclassified key',
+      `function admin() {\n  return createClient(${URL_ARG}, process.env.KEY!);\n}\n`,
+    ],
+    [
+      'an untraceable return',
+      `function admin(db: ReturnType<typeof createClient>) {\n  return db;\n}\n`,
+    ],
+    [
+      'only null returns',
+      `function admin(): ReturnType<typeof createClient> {\n  return null!;\n}\n`,
+    ],
+    [
+      'four factories deep',
+      `function a() { return ${secret}; }\nfunction b() { return a(); }\nfunction c() { return b(); }\nfunction admin() { return c(); }\n`,
+    ],
+    [
+      'recursion',
+      `function admin(n: number): ReturnType<typeof createClient> {\n  if (n > 0) return admin(n - 1);\n  return ${secret};\n}\n`,
+    ],
+    [
+      'a function-scoped let',
+      `function admin() {\n  let db = ${anon};\n  db = ${secret};\n  return db;\n}\n`,
+    ],
+    [
+      'a singleton with an unclassified assignment',
+      `let cached = ${secret};\nfunction admin() {\n  cached = createClient(${URL_ARG}, process.env.KEY!);\n  return cached;\n}\n`,
+    ],
+    ['a declared function', 'declare function admin(): ReturnType<typeof createClient>;\n'],
+  ])('falls back to step 4 on %s', (_, factory) => {
+    expect(only(head + factory + call('admin'))).toEqual(UNKNOWN);
+  });
+
+  it('ignores a bare return and assignments to other targets', () => {
+    const code =
+      `${head}let cached: ReturnType<typeof createClient> | undefined;\n` +
+      'let other = 0;\nconst box = { n: 0 };\nother = 1;\nbox.n = 2;\n' +
+      `function admin() {\n  if (!process.env.URL) return;\n  return (cached ||= ${secret});\n}\n` +
+      "void admin()!.from('todos').select();\n";
+    expect(only(code)).toEqual(SERVICE);
+  });
+
+  it('step 5: skips new of an undeclared class', () => {
+    const code = `${CLIENT}void (new Undeclared() as SupabaseClient).from('todos').select();\n`;
+    expect(only(code)).toEqual(NO_CLIENT);
+  });
+
+  it('follows an awaited async factory that awaits its client', () => {
+    const code =
+      `${head}const admin = async () => await ${secret};\n` +
+      "async function list() {\n  const db = await admin();\n  return db.from('todos').select();\n}\nvoid list;\n";
+    expect(only(code)).toEqual(SERVICE);
+  });
+
+  it('caches per factory and still lets settings win', () => {
+    const code = `${head}function admin() {\n  return ${secret};\n}\n${call('admin')}${call('admin')}`;
+    expect(resolveAll(code).map(rolesOnly)).toEqual([SERVICE, SERVICE]);
+    const settings = { clients: [{ callee: 'admin', role: 'anon' }] };
+    expect(resolveAll(code, settings).map(rolesOnly)).toEqual([mapped('anon'), mapped('anon')]);
   });
 });
 

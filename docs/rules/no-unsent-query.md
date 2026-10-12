@@ -37,6 +37,14 @@ Not reported: `await`, `return`, assignment to a variable, passing the builder a
 putting it in an array or object, and `.then()` or `.catch()` chains. Each of these sends the request
 or hands the builder on.
 
+Also not reported: a statement that refines a builder held in a variable or parameter, such as
+`if (done) query.eq('done', true);`. Filters (`eq`, `in`, `or`, ...) and transforms (`order`,
+`limit`, `range`, ...) change the builder they are called on and return it, so the query is sent
+later with the refinement. A chain that starts at the client (`supabase.from(...)`), or that ends in
+a method returning another builder (`single`, `maybeSingle`, `csv`, `geojson`, `explain`,
+`throwOnError`), is still reported, and so is the variable on its own (`query;`). The rule cannot
+see whether such a variable is ever sent.
+
 The rule has no options.
 
 Examples of **incorrect** code for this rule:
@@ -83,6 +91,13 @@ void supabase
 
 // Uploads are sent at once, so `void` is harmless here.
 void supabase.storage.from('avatars').upload('me.png', new Blob(['avatar']));
+
+// A filter refines the query in place; `await` sends it.
+export async function list(done?: boolean) {
+  const query = supabase.from('todos').select();
+  if (done !== undefined) query.eq('done', done);
+  return await query;
+}
 ```
 
 ### Suggestions

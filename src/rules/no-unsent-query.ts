@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
 import type { RuleFix, RuleFixer } from '@typescript-eslint/utils/ts-eslint';
 import { stats } from '../stats.js';
-import { lazyBuilder, type BuilderKind } from '../supabase/types.js';
+import { isRefinementMethod, lazyBuilder, type BuilderKind } from '../supabase/types.js';
 import { createRule } from '../util/create-rule.js';
 
 export type MessageId = 'voidBuilder' | 'floatingBuilder' | 'suggestAwait' | 'suggestThen';
@@ -107,6 +107,25 @@ export const noUnsentQuery = createRule<[], MessageId>({
     const builderKind = (expression: TSESTree.Expression): BuilderKind | undefined =>
       lazyBuilder(checker, services.getTypeAtLocation(expression))?.kind;
 
+    /**
+     * `q.eq('a', 1);` on a query builder held in a variable or parameter: every call of the
+     * chain is a filter or transform that changes `q` and returns it, so the statement refines a
+     * query that is sent later (ADR-022 item 5).
+     */
+    function refinesInPlace(expression: TSESTree.Expression): boolean {
+      let node = expression;
+      let calls = 0;
+      while (node.type === AST_NODE_TYPES.CallExpression) {
+        const callee = node.callee;
+        if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) return false;
+        const name = services.esTreeNodeToTSNodeMap.get(callee.property);
+        if (!isRefinementMethod(checker.getSymbolAtLocation(name))) return false;
+        node = callee.object;
+        calls++;
+      }
+      return calls > 0 && node.type === AST_NODE_TYPES.Identifier && builderKind(node) === 'query';
+    }
+
     function operand(builder: TSESTree.Expression): string {
       const text = sourceCode.getText(builder);
       return TIGHT.has(builder.type) ? text : `(${text})`;
@@ -116,6 +135,7 @@ export const noUnsentQuery = createRule<[], MessageId>({
       const found = findUnsentBuilder(node, builderKind);
       if (found === undefined) return;
       const { target, builder } = found;
+      if (found.messageId === 'floatingBuilder' && refinesInPlace(builder)) return;
       const thenFix = (fixer: RuleFixer): RuleFix =>
         fixer.replaceText(target, `void ${operand(builder)}.then()`);
       const awaitFix = (fixer: RuleFixer): RuleFix =>

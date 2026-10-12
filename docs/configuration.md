@@ -115,12 +115,25 @@ created it (through imports, `const` aliases and `await`), then takes the first 
 list:
 
 1. a `clients` entry that matches;
-2. a key argument whose name says service role or secret key (`/service[_-]?role/i`,
-   `/secret[_-]?key/i`), or a literal that starts with `sb_secret_`: `service_role`;
+2. a key argument whose name says service role, service key or secret key (`/service[_-]?role/i`,
+   `/service[_-]?key/i`, `/secret[_-]?key/i`), or a literal that starts with `sb_secret_`:
+   `service_role`;
 3. a key argument whose name says anon or publishable (`/anon[_-]?key|publishable/i`), or a
    literal that starts with `sb_publishable_`: `defaultRoles`;
 4. any other key: `defaultRoles`, or skipped when `unknownKey` is `"skip"`;
-5. a client the plugin cannot trace (a function parameter, a `let`, an object property): skipped.
+5. a client the plugin cannot trace (a function parameter, a `let`, an object property, or `new` of
+   a class that is not supabase-js's, such as a `Proxy`): skipped.
+
+A key's name is the variable or property it is read from (`process.env.SUPABASE_SERVICE_ROLE_KEY`,
+`serviceKey`), or the string a helper is called with (`Deno.env.get('SUPABASE_ANON_KEY')`,
+`getEnv('SUPABASE_SERVICE_ROLE_KEY')`).
+
+When the client comes from your own factory function, such as `createAdminClient()`, steps 2 and 3
+read the clients that function returns: every `return` (and an arrow's expression body), through
+`const` aliases, `await` and up to three of your own factories deep. A module-level `let` that the
+function returns (a lazily created client) counts every value assigned to it. `return null` and
+`return undefined` are ignored. If every returned client has a key that steps 2 and 3 classify the
+same way, that answer is used; otherwise step 4 applies. A `clients` entry still wins.
 
 Only names and key prefixes in your source are read. The plugin never reads `.env` files and never
 decodes, logs or prints a key.

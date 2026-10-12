@@ -24,13 +24,19 @@ export const QUERY_RECEIVERS: readonly SupabaseClass[] = [SUPABASE_CLIENT, POSTG
 /** Declares the filter methods (`eq`, `in`, `match`, `or`, ...), and `throwOnError`. */
 export const POSTGREST_FILTER_BUILDER = supabaseClass('postgrest-js', 'PostgrestFilterBuilder');
 
+/** Declares the transforms (`order`, `limit`, `range`, `single`, `csv`, ...). */
+export const POSTGREST_TRANSFORM_BUILDER = supabaseClass(
+  'postgrest-js',
+  'PostgrestTransformBuilder',
+);
+
 /**
  * Lazy query builders (§6.2, ADR-002): they implement `PromiseLike` and send the request only
  * when `then` is called. Most derived first, so a match names the most specific class.
  */
 export const QUERY_BUILDERS: readonly SupabaseClass[] = [
   POSTGREST_FILTER_BUILDER,
-  supabaseClass('postgrest-js', 'PostgrestTransformBuilder'),
+  POSTGREST_TRANSFORM_BUILDER,
   supabaseClass('postgrest-js', 'PostgrestBuilder'),
 ];
 
@@ -132,6 +138,31 @@ export function isQueryReceiver(checker: ts.TypeChecker, type: ts.Type): boolean
 /** Whether `type` is a realtime-js `RealtimeChannel`. */
 export function isRealtimeChannel(checker: ts.TypeChecker, type: ts.Type): boolean {
   return findClass(checker, type, [CHANNEL_CLASS]) !== undefined;
+}
+
+/** Builder methods that return a builder of another type rather than `this`. */
+const RETYPING_METHODS: ReadonlySet<string> = new Set([
+  'throwOnError',
+  'single',
+  'maybeSingle',
+  'csv',
+  'geojson',
+  'explain',
+]);
+
+/**
+ * Whether a method symbol refines a query builder in place: a filter or transform method of
+ * `PostgrestFilterBuilder` or `PostgrestTransformBuilder` that changes the builder and returns it
+ * (`eq`, `in`, `order`, `limit`, `range`, ...). ADR-022 item 5.
+ */
+export function isRefinementMethod(symbol: ts.Symbol | undefined): boolean {
+  if (symbol === undefined || RETYPING_METHODS.has(symbol.name)) return false;
+  return (symbol.declarations ?? []).some(
+    (declaration) =>
+      ts.isClassDeclaration(declaration.parent) &&
+      (declares(declaration.parent, POSTGREST_FILTER_BUILDER) ||
+        declares(declaration.parent, POSTGREST_TRANSFORM_BUILDER)),
+  );
 }
 
 /** Whether a method symbol is one of `PostgrestFilterBuilder`'s filters (not `throwOnError`). */

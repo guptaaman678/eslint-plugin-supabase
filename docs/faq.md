@@ -84,7 +84,8 @@ Other causes:
 
 - **The client role.** The plugin assumes a client with a publishable key may run as `anon` or
   `authenticated`, and reports only when neither role passes. If a client really runs as the
-  service role (for example through your own factory), map it in
+  service role but the plugin cannot see its key (for example your own factory reads the key in a
+  way the plugin does not follow), map it in
   [`settings.supabase.clients`](./configuration.md#clients).
 - **A `do` block or a function.** The replay does not run plpgsql. A policy or grant created
   inside a `do` block is not seen ([Limitations](./how-it-works.md#limitations)).

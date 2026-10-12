@@ -18,7 +18,11 @@ export type ClientRoles =
   | { readonly roles: readonly Role[]; readonly source: undefined; readonly skip: RoleSkipReason };
 
 /** Key names that visibly hold the service-role (or secret) key (§6.5 step 2). */
-export const SERVICE_ROLE_NAMES: readonly RegExp[] = [/service[_-]?role/i, /secret[_-]?key/i];
+export const SERVICE_ROLE_NAMES: readonly RegExp[] = [
+  /service[_-]?role/i,
+  /service[_-]?key/i,
+  /secret[_-]?key/i,
+];
 /** Key names that visibly hold a client key (§6.5 step 3). */
 export const CLIENT_KEY_NAMES: readonly RegExp[] = [/anon[_-]?key|publishable/i];
 export const SECRET_KEY_PREFIX = 'sb_secret_';
@@ -29,6 +33,8 @@ const NO_ROLES: readonly Role[] = [];
 
 /** Alias chains and nested fallbacks deeper than this are not followed (broken code only). */
 const MAX_DEPTH = 16;
+/** A project factory that calls more nested project factories than this is not followed. */
+const MAX_FACTORY_HOPS = 3;
 
 type ClientOrigin = ts.CallExpression | ts.NewExpression;
 
@@ -40,12 +46,17 @@ type ClientOrigin = ts.CallExpression | ts.NewExpression;
  * 1. a `settings.supabase.clients` entry, in order, whose `module` glob matches the file of that
  *    call or the file declaring the project's own factory it calls, or whose `callee` is the
  *    factory's name (as called, or as declared when imported under another name);
- * 2. a key argument of a supabase-js factory whose name says service role or secret key, or a
- *    literal starting with `sb_secret_`: `service_role`;
+ * 2. a key argument of a supabase-js factory whose name says service role, service key or secret
+ *    key, or a literal starting with `sb_secret_`: `service_role`;
  * 3. a key name that says anon or publishable, or a literal starting with `sb_publishable_`:
  *    `settings.supabase.defaultRoles`;
  * 4. any other origin: `defaultRoles`, or skipped as `unknown-key` when `unknownKey` is `skip`;
- * 5. no origin (a parameter, a `let`, a property): skipped as `unknown-client`.
+ * 5. no origin (a parameter, a `let`, a property, `new` of a class outside supabase-js): skipped
+ *    as `unknown-client`.
+ *
+ * For an origin that calls the project's own factory, steps 2 and 3 read the clients that factory
+ * returns, up to three factories deep: when every returned client is a supabase-js factory whose
+ * key steps 2 and 3 classify the same way, that class decides (ADR-022).
  *
  * Only names and prefixes in the source text are read. Key values are never decoded or kept.
  */
@@ -89,7 +100,8 @@ function clientOrigin(checker: ts.TypeChecker, node: ts.Expression): ClientOrigi
       node = origin.expression;
       continue;
     }
-    if (ts.isNewExpression(origin)) return origin;
+    // `new Proxy(...)` and other classes outside supabase-js say nothing about the key.
+    if (ts.isNewExpression(origin)) return supabaseClass(checker, origin) ? origin : undefined;
     if (!ts.isCallExpression(origin)) return undefined;
     const declaration = declarationOf(checker, origin);
     // A supabase-js method (`.schema(s)`, `.channel(name)`, `.on(...)`) keeps its receiver's key.
@@ -99,6 +111,17 @@ function clientOrigin(checker: ts.TypeChecker, node: ts.Expression): ClientOrigi
     node = origin.expression.expression;
   }
   return undefined;
+}
+
+/** Whether a `new` constructs a class declared by supabase-js (`SupabaseClient`). */
+function supabaseClass(checker: ts.TypeChecker, origin: ts.NewExpression): boolean {
+  const callee = skipWrappers(origin.expression);
+  const name = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
+  let symbol = checker.getSymbolAtLocation(name);
+  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    symbol = checker.getAliasedSymbol(symbol);
+  }
+  return (symbol?.declarations ?? []).some(inSupabasePackage);
 }
 
 function mappedClient(
@@ -135,11 +158,150 @@ function calleeNames(checker: ts.TypeChecker, origin: ClientOrigin): string[] {
 
 type KeyKind = 'service-role' | 'client';
 
-/** What the key argument of a supabase-js factory visibly is (§6.5 steps 2 and 3). */
+/** Followed project factories, by declaration; null when they decide nothing. */
+const factoryKinds = new WeakMap<ts.Declaration, KeyKind | null>();
+
+/** What the key of a client origin visibly is (§6.5 steps 2 and 3). */
 function keyKind(checker: ts.TypeChecker, origin: ClientOrigin): KeyKind | undefined {
   const declaration = declarationOf(checker, origin);
-  // A project's own factory: the key it passes is not visible here (settings can map it).
-  if (declaration === undefined || !inSupabasePackage(declaration)) return undefined;
+  if (declaration === undefined) return undefined;
+  if (inSupabasePackage(declaration)) return suppliedKeyKind(checker, origin);
+  // A project's own factory: the keys of the clients it returns (ADR-022 item 1).
+  let kind = factoryKinds.get(declaration);
+  if (kind === undefined) {
+    kind = returnedKeyKind(checker, declaration, 1, new Set()) ?? null;
+    factoryKinds.set(declaration, kind);
+  }
+  return kind ?? undefined;
+}
+
+/**
+ * The one class of key every client a project factory returns has. Returns of `null` and
+ * `undefined` are ignored; any other return that does not lead to a supabase-js factory with a
+ * classified key (through at most `MAX_FACTORY_HOPS` project factories, without recursion)
+ * decides nothing.
+ */
+function returnedKeyKind(
+  checker: ts.TypeChecker,
+  declaration: ts.Declaration,
+  hops: number,
+  seen: Set<ts.Declaration>,
+): KeyKind | undefined {
+  if (hops > MAX_FACTORY_HOPS || seen.has(declaration)) return undefined;
+  if (!projectFunction(declaration)) return undefined;
+  seen.add(declaration);
+  let kind: KeyKind | undefined;
+  for (const returned of returnedClients(checker, declaration)) {
+    const origin = clientOrigin(checker, returned);
+    const inner = origin === undefined ? undefined : declarationOf(checker, origin);
+    let next: KeyKind | undefined;
+    if (origin === undefined || inner === undefined) next = undefined;
+    else if (inSupabasePackage(inner)) next = suppliedKeyKind(checker, origin);
+    else next = returnedKeyKind(checker, inner, hops + 1, seen);
+    if (next === undefined || (kind !== undefined && next !== kind)) {
+      kind = undefined;
+      break;
+    }
+    kind = next;
+  }
+  seen.delete(declaration);
+  return kind;
+}
+
+type ProjectFunction = ts.FunctionLikeDeclaration & { readonly body: ts.ConciseBody };
+
+/** A function with a body declared outside node_modules. */
+function projectFunction(declaration: ts.Declaration): declaration is ProjectFunction {
+  return (
+    (ts.isFunctionDeclaration(declaration) ||
+      ts.isFunctionExpression(declaration) ||
+      ts.isArrowFunction(declaration) ||
+      ts.isMethodDeclaration(declaration)) &&
+    declaration.body !== undefined &&
+    !declaration.getSourceFile().fileName.replaceAll('\\', '/').includes('/node_modules/')
+  );
+}
+
+/**
+ * The client expressions a function returns: every `return` (not those of nested functions) and
+ * an arrow's expression body. A module-level `let` that is returned contributes its initialiser
+ * and every assignment to it (a lazy singleton). `null` and `undefined` are left out.
+ */
+function returnedClients(checker: ts.TypeChecker, fn: ProjectFunction): ts.Expression[] {
+  const returned: ts.Expression[] = [];
+  if (!ts.isBlock(fn.body)) {
+    returned.push(fn.body);
+  } else {
+    const visit = (node: ts.Node): void => {
+      if (ts.isFunctionLike(node) || ts.isClassLike(node)) return;
+      if (ts.isReturnStatement(node)) {
+        if (node.expression !== undefined) returned.push(node.expression);
+        return;
+      }
+      ts.forEachChild(node, visit);
+    };
+    ts.forEachChild(fn.body, visit);
+  }
+  return returned
+    .flatMap((expression) => singletonValues(checker, expression) ?? [expression])
+    .filter((expression) => !nullish(skipWrappers(expression)));
+}
+
+/** The initialiser and assigned values of a returned module-level `let`; else undefined. */
+function singletonValues(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+): ts.Expression[] | undefined {
+  // `return (cached ??= createClient(...))` returns the variable.
+  const assigned = skipWrappers(expression);
+  if (ts.isBinaryExpression(assigned) && assignment(assigned)) expression = assigned.left;
+  const identifier = resolveExpression(checker, expression);
+  if (!ts.isIdentifier(identifier)) return undefined;
+  const symbol = checker.getSymbolAtLocation(identifier);
+  const declaration = symbol?.valueDeclaration;
+  if (
+    declaration === undefined ||
+    !ts.isVariableDeclaration(declaration) ||
+    !ts.isVariableStatement(declaration.parent.parent) ||
+    !ts.isSourceFile(declaration.parent.parent.parent)
+  ) {
+    return undefined;
+  }
+  const values = declaration.initializer === undefined ? [] : [declaration.initializer];
+  const visit = (node: ts.Node): void => {
+    if (ts.isBinaryExpression(node) && assignment(node)) {
+      const target = skipWrappers(node.left);
+      if (ts.isIdentifier(target) && checker.getSymbolAtLocation(target) === symbol) {
+        values.push(node.right);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(declaration.getSourceFile(), visit);
+  return values;
+}
+
+/** `a = b`, `a ??= b` or `a ||= b`. */
+function assignment(node: ts.BinaryExpression): boolean {
+  const kind = node.operatorToken.kind;
+  return (
+    kind === ts.SyntaxKind.EqualsToken ||
+    kind === ts.SyntaxKind.QuestionQuestionEqualsToken ||
+    kind === ts.SyntaxKind.BarBarEqualsToken
+  );
+}
+
+/** `null`, `undefined` or `void x`. */
+function nullish(node: ts.Expression): boolean {
+  return (
+    node.kind === ts.SyntaxKind.NullKeyword ||
+    ts.isVoidExpression(node) ||
+    (ts.isIdentifier(node) && node.text === 'undefined')
+  );
+}
+
+/** What the key argument of a supabase-js factory visibly is (§6.5 steps 2 and 3). */
+function suppliedKeyKind(checker: ts.TypeChecker, origin: ClientOrigin): KeyKind | undefined {
   const key = (origin.arguments ?? [])[1];
   if (key === undefined) return undefined;
   const names: string[] = [];
@@ -162,7 +324,8 @@ function keyKind(checker: ts.TypeChecker, origin: ClientOrigin): KeyKind | undef
 /**
  * Collects the names and string literals a key expression is made of: identifiers along a
  * `const` chain, the property of `a.b` or `a['b']` (so `process.env.X` and `import.meta.env.X`
- * give `X`), the argument of `Deno.env.get('X')`, and both sides of `??` and `||`.
+ * give `X`), the string literal first argument of a call (`Deno.env.get('X')`, `getEnv('X')`,
+ * `config.get('X')`: ADR-022 item 4), and both sides of `??` and `||`.
  */
 function keyParts(
   checker: ts.TypeChecker,
@@ -184,8 +347,13 @@ function keyParts(
   } else if (ts.isElementAccessExpression(node)) {
     if (ts.isStringLiteral(node.argumentExpression)) names.push(node.argumentExpression.text);
   } else if (ts.isCallExpression(node)) {
-    const variable = denoEnvName(node);
-    if (variable !== undefined) names.push(variable);
+    const argument = node.arguments[0];
+    if (
+      argument !== undefined &&
+      (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
+    ) {
+      names.push(argument.text);
+    }
   } else if (
     ts.isBinaryExpression(node) &&
     (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
@@ -194,20 +362,4 @@ function keyParts(
     keyParts(checker, node.left, names, literals, depth + 1);
     keyParts(checker, node.right, names, literals, depth + 1);
   }
-}
-
-/** `X` of `Deno.env.get('X')`. */
-function denoEnvName(call: ts.CallExpression): string | undefined {
-  const callee = call.expression;
-  const argument = call.arguments[0];
-  if (
-    !ts.isPropertyAccessExpression(callee) ||
-    callee.name.text !== 'get' ||
-    callee.expression.getText() !== 'Deno.env' ||
-    argument === undefined ||
-    !ts.isStringLiteral(argument)
-  ) {
-    return undefined;
-  }
-  return argument.text;
 }

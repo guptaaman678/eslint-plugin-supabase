@@ -82,9 +82,9 @@ them ([Configuration](./configuration.md#skip-statistics)).
   (`supabase db pull` or `supabase db diff`) and the report goes away.
 - **Dynamic names.** A table, schema or event computed at run time (a `string` variable, a
   function parameter, a union of more than five names) is skipped.
-- **Clients the plugin cannot trace.** A client passed in as a function parameter, kept in a `let`
-  or read from an object property is skipped, unless it comes from a factory mapped in
-  `settings.supabase.clients`.
+- **Clients the plugin cannot trace.** A client passed in as a function parameter, kept in a `let`,
+  read from an object property or wrapped in a `Proxy` is skipped, unless it comes from a factory
+  mapped in `settings.supabase.clients`.
 - **Code in `do` blocks and functions.** The replay does not run plpgsql. A publication changed
   inside a `do` block makes that publication's membership unknown, and `realtime-table-published`
   skips it. Policies, grants and row level security changed inside a `do` block or a function body

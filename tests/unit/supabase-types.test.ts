@@ -5,6 +5,7 @@ import {
   DOWNLOAD_BUILDERS,
   findClass,
   isFilterMethod,
+  isRefinementMethod,
   isPackageFile,
   isQueryReceiver,
   isRealtimeChannel,
@@ -260,5 +261,15 @@ describe('isFilterMethod', () => {
     expect(isFilterMethod(bare)).toBe(false);
     const thrown = { name: 'throwOnError', declarations: [] } as unknown as ts.Symbol;
     expect(isFilterMethod(thrown)).toBe(false);
+  });
+});
+
+describe('isRefinementMethod', () => {
+  it('is false for a missing symbol, a retyping method and a symbol without declarations', () => {
+    expect(isRefinementMethod(undefined)).toBe(false);
+    const bare = { name: 'eq', declarations: undefined } as unknown as ts.Symbol;
+    expect(isRefinementMethod(bare)).toBe(false);
+    const csv = { name: 'csv', declarations: [] } as unknown as ts.Symbol;
+    expect(isRefinementMethod(csv)).toBe(false);
   });
 });

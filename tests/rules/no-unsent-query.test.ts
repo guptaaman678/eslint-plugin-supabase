@@ -71,8 +71,47 @@ createRuleTester().run('no-unsent-query', noUnsentQuery, {
     "'use strict';\nexport const n = -1;",
     'class PostgrestBuilder {\n  then() {}\n}\nnew PostgrestBuilder();\nvoid new PostgrestBuilder();',
     code("typeof supabase.from('todos').select();"),
+    // ADR-022 item 5: filters and transforms refine a builder variable in place; it is sent later.
+    code(
+      "export async function list(done: boolean) {\n  const q = supabase.from('todos').select();\n  if (done) q.eq('done', true);\n  q.order('id').limit(10);\n  await q;\n}",
+    ),
+    code(
+      "import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';\n" +
+        "export function narrow(q: PostgrestFilterBuilder<any, any, any, any, any, any, any>) {\n  q.in('id', [1, 2]).range(0, 9);\n  return q;\n}",
+    ),
   ],
   invalid: [
+    // ADR-022 item 5: still reported: the variable alone, a chain from the client, and a chain
+    // ending in a method that returns another builder.
+    invalid("const q = supabase.from('todos').select();\nq;", {
+      messageId: 'floatingBuilder',
+      target: 'q;',
+      then: 'void q.then();',
+    }),
+    invalid("supabase.from('todos').update({ done: true }).eq('id', 1);", {
+      messageId: 'floatingBuilder',
+      target: "supabase.from('todos').update({ done: true }).eq('id', 1)",
+      then: "void supabase.from('todos').update({ done: true }).eq('id', 1).then()",
+    }),
+    invalid("const q = supabase.from('todos').select();\nq.eq('id', 1).csv();", {
+      messageId: 'floatingBuilder',
+      target: "q.eq('id', 1).csv()",
+      then: "void q.eq('id', 1).csv().then()",
+    }),
+    invalid("const q = supabase.from('todos').select();\nq['eq']('id', 1);", {
+      messageId: 'floatingBuilder',
+      target: "q['eq']('id', 1)",
+      then: "void q['eq']('id', 1).then()",
+    }),
+    invalid(
+      "const q = supabase.from('todos').select();\nconst same = <T>(value: T): T => value;\nsame(q);",
+      { messageId: 'floatingBuilder', target: 'same(q)', then: 'void same(q).then()' },
+    ),
+    invalid("const t = supabase.from('todos');\nt.select().eq('id', 1);", {
+      messageId: 'floatingBuilder',
+      target: "t.select().eq('id', 1)",
+      then: "void t.select().eq('id', 1).then()",
+    }),
     // ADR-006 item 4: bare from().insert(), rpc(), storage download, and inside a forEach body.
     invalid(`${insert};`, {
       messageId: 'floatingBuilder',
