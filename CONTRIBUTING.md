@@ -30,6 +30,25 @@ Node `>=22` is required (`.nvmrc` pins the version used in development).
 | `npm run mutation:check`          | score at least 85 and every survivor explained in [Mutation notes](#mutation-notes)           |
 | `npm run bench`                   | cold and warm lint timings on generated projects (§6.8 budgets)                               |
 | `npm run pack-check`              | pack the tarball, install it into a throwaway project, lint a fixture app through it          |
+| `npm run ci:local`                | every CI step on this machine, one PASS or FAIL line each (see [Local CI](#local-ci))         |
+
+## Local CI
+
+While the repository is private, GitHub Actions minutes are limited, so
+`.github/workflows/ci.yml` runs on push and pull request only on ubuntu with
+Node 22 and 24 (the `test` and `package` jobs). The macOS, Windows and Node 26
+legs and the `compat` job run when the workflow is started by hand
+(`workflow_dispatch`). Once the repository is public, the full matrix runs on
+every push again.
+
+Meanwhile, `npm run ci:local` runs the commands of every CI job in CI order:
+`npm ci`, `format:check`, `lint`, `typecheck`, `build`, the demo check,
+`test:coverage`, `docs:check`, `pack-check` and the 12 `compat` cells. A failed
+step does not stop the later ones; the script prints one PASS or FAIL line per
+step and exits 1 if any failed. `npm run ci:local -- --skip-compat` leaves the
+compat cells out (they install packages from npm, so they need the network and
+take a few minutes). It covers only the operating system and Node version it
+runs on.
 
 ## Typed fixtures
 
