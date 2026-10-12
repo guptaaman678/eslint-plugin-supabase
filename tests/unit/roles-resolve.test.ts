@@ -339,12 +339,29 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `function a() { return ${secret}; }\nfunction b() { return a(); }\nfunction admin() { return b(); }\n`,
       SERVICE,
     ],
+    [
+      'a conditional return with a null branch',
+      `function admin() {\n  const url = process.env.URL;\n  return url ? ${secret} : null;\n}\n`,
+      SERVICE,
+    ],
+    [
+      'nested conditional branches of one class',
+      `const admin = (x: boolean, y: boolean) =>\n  x ? (y ? ${anon} : undefined) : createClient(${URL_ARG}, 'sb_publishable_test');\n`,
+      CLIENT_KEY,
+    ],
   ])('decides by %s', (_, factory, expected) => {
     expect(only(head + factory + call('admin'))).toEqual(expected);
   });
 
   it.each([
-    ['a conditional return', `function admin(x: boolean) {\n  return x ? null : ${secret};\n}\n`],
+    [
+      'conditional branches of different classes',
+      `function admin(x: boolean) {\n  return x ? ${anon} : ${secret};\n}\n`,
+    ],
+    [
+      'a conditional with an untraceable branch',
+      `function admin(x: boolean, db: ReturnType<typeof createClient>) {\n  return x ? db : ${secret};\n}\n`,
+    ],
     [
       'returns of different classes',
       `function admin(x: boolean) {\n  if (x) return ${anon};\n  return ${secret};\n}\n`,

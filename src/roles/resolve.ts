@@ -243,8 +243,16 @@ function returnedClients(checker: ts.TypeChecker, fn: ProjectFunction): ts.Expre
     ts.forEachChild(fn.body, visit);
   }
   return returned
+    .flatMap(branches)
     .flatMap((expression) => singletonValues(checker, expression) ?? [expression])
     .filter((expression) => !nullish(skipWrappers(expression)));
+}
+
+/** Both branches of `cond ? a : b` (nested ones too), which the expression returns; else itself. */
+function branches(expression: ts.Expression): ts.Expression[] {
+  const inner = skipWrappers(expression);
+  if (!ts.isConditionalExpression(inner)) return [expression];
+  return [...branches(inner.whenTrue), ...branches(inner.whenFalse)];
 }
 
 /** The initialiser and assigned values of a returned module-level `let`; else undefined. */

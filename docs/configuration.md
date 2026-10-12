@@ -131,8 +131,8 @@ A key's name is the variable or property it is read from (`process.env.SUPABASE_
 When the client comes from your own factory function, such as `createAdminClient()`, steps 2 and 3
 read the clients that function returns: every `return` (and an arrow's expression body), through
 `const` aliases, `await` and up to three of your own factories deep. A module-level `let` that the
-function returns (a lazily created client) counts every value assigned to it. `return null` and
-`return undefined` are ignored. If every returned client has a key that steps 2 and 3 classify the
+function returns (a lazily created client) counts every value assigned to it. Both branches of a
+returned `cond ? client : null` count. `null` and `undefined` returns are ignored. If every returned client has a key that steps 2 and 3 classify the
 same way, that answer is used; otherwise step 4 applies. A `clients` entry still wins.
 
 Only names and key prefixes in your source are read. The plugin never reads `.env` files and never
