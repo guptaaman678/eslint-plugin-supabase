@@ -3,23 +3,34 @@ import { resolveClientRoles } from '../roles/resolve.js';
 import { snapshotCache } from '../schema/engine.js';
 import { projectForFile } from '../schema/project.js';
 import { schemaForFile, type SchemaLookup } from '../schema/lookup.js';
-import type { SnapshotName } from '../schema/snapshot.js';
+import type { SnapshotLocation, SnapshotName } from '../schema/snapshot.js';
 import type { Privilege, SchemaView } from '../schema/view.js';
 import { readSettings, type Role } from '../settings.js';
 import { stats, type StatsReason } from '../stats.js';
 import { analyzeCall, type Subscription, type TableCall } from '../supabase/calls.js';
 import { createRule } from '../util/create-rule.js';
-import { ignoredNames, qualified, type IgnoredTable } from './realtime-table-published.js';
+import {
+  ignoredNames,
+  locationText,
+  qualified,
+  type IgnoredTable,
+} from './realtime-table-published.js';
 import { unresolvedReason } from './unresolved.js';
 
 export type MessageId =
-  'noSelectPolicy' | 'updatesNoRows' | 'deletesNoRows' | 'subscriptionNoEvents' | 'unresolved';
+  | 'noSelectPolicy'
+  | 'updatesNoRows'
+  | 'deletesNoRows'
+  | 'subscriptionNoEvents'
+  | 'policiesUncertain'
+  | 'unresolved';
 
 /**
  * Why this rule skips a call or a table: a subscription whose event is not a literal, a relation
- * the migrations never create, a view (RLS applies to the tables it reads, ADR-007).
+ * the migrations never create, a view (RLS applies to the tables it reads, ADR-007), a table whose
+ * policies a `do` block changes (ADR-023).
  */
-export type RlsSkipReason = 'dynamic-event' | 'unknown-relation' | 'view';
+export type RlsSkipReason = 'dynamic-event' | 'unknown-relation' | 'view' | 'policy-uncertain';
 
 export interface Options {
   readonly ignoreTables: readonly IgnoredTable[];
@@ -37,11 +48,17 @@ export type Verdict =
   | { readonly kind: 'ok' }
   | {
       readonly kind: 'report';
-      readonly messageId: Exclude<MessageId, 'unresolved'>;
+      readonly messageId: Exclude<MessageId, 'policiesUncertain' | 'unresolved'>;
       /** RLS came from the automatic RLS trigger (ADR-010). */
       readonly autoRls: boolean;
     }
-  | { readonly kind: 'skip'; readonly reason: 'unknown-relation' | 'view' };
+  | { readonly kind: 'skip'; readonly reason: 'unknown-relation' | 'view' }
+  | {
+      readonly kind: 'skip';
+      readonly reason: 'policy-uncertain';
+      /** Where a `do` block made the table's policies unknown. */
+      readonly at: SnapshotLocation;
+    };
 
 const OK: Verdict = { kind: 'ok' };
 
@@ -81,7 +98,7 @@ export function bypassesRls(roles: readonly Role[]): boolean {
  * ADR-007): with RLS on, report when no role in the set has a permissive policy for the command
  * (or `all`) whose `using` is not literally `false`. A filtered update or delete also needs a
  * select policy, because its filter reads rows. Views and relations the migrations never create
- * are skipped.
+ * are skipped, and so is a table with RLS on whose policies a `do` block changes (ADR-023).
  */
 export function rlsVerdict(
   view: SchemaView,
@@ -95,6 +112,9 @@ export function rlsVerdict(
   if (relation === undefined) return { kind: 'skip', reason: 'unknown-relation' };
   if (relation.kind === 'view') return { kind: 'skip', reason: 'view' };
   if (!relation.rls.enabled) return OK;
+  if (relation.policiesUncertain !== null) {
+    return { kind: 'skip', reason: 'policy-uncertain', at: relation.policiesUncertain };
+  }
   const allows = (command: Privilege) =>
     roles.some((role) =>
       view
@@ -143,6 +163,8 @@ export const rlsReadable = createRule<[Options], MessageId>({
         '`{{table}}` has row level security on{{via}} and no delete policy (or no select policy, which deletes need to find rows) for {{roles}} in your migrations, so this delete removes no rows and returns no error. Add a delete policy and a select policy, or run it through a function or a server-side client.',
       subscriptionNoEvents:
         '`{{table}}` has row level security on{{via}} and no select policy for {{roles}} in your migrations, so this subscription receives no insert or update events, and delete events arrive with only the primary key. Add a select policy.',
+      policiesUncertain:
+        'This call is not checked against your row level security policies, because your migrations change the policies of `{{table}}` at {{location}} in a way this rule cannot read (a `do` block), so which policies it has is unknown. Write those policies as plain `create policy` statements to have it checked.',
       unresolved:
         'This call is not checked against your row level security policies, so a missing policy would go unnoticed: {{reason}}',
     },
@@ -252,6 +274,16 @@ export const rlsReadable = createRule<[Options], MessageId>({
           for (const name of call.tables) {
             const table = qualified({ schema, name });
             const verdict = rlsVerdict(view, { schema, name }, client.roles, access, ignored);
+            if (verdict.kind === 'skip' && verdict.reason === 'policy-uncertain') {
+              stats.recordCall(node, verdict.reason);
+              if (!options.reportUnresolved) continue;
+              context.report({
+                node,
+                messageId: 'policiesUncertain',
+                data: { table, location: locationText(verdict.at) },
+              });
+              continue;
+            }
             if (verdict.kind === 'skip') {
               unresolved(node, verdict.reason, table);
               continue;

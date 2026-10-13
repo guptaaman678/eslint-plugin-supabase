@@ -87,8 +87,10 @@ Other causes:
   service role but the plugin cannot see its key (for example your own factory reads the key in a
   way the plugin does not follow), map it in
   [`settings.supabase.clients`](./configuration.md#clients).
-- **A `do` block or a function.** The replay does not run plpgsql. A policy or grant created
-  inside a `do` block is not seen ([Limitations](./how-it-works.md#limitations)).
+- **A `do` block or a function.** The replay does not run plpgsql. A grant created inside a `do`
+  block, or a policy created inside a function body, is not seen
+  ([Limitations](./how-it-works.md#limitations)). A policy created inside a `do` block makes the
+  table's policies unknown, so `rls-readable` skips that table instead of reporting it.
 - **A deliberate exception.** If a table is meant to fail for that client, add it to the rule's
   `ignoreTables` option with a reason.
 

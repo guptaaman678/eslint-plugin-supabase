@@ -113,6 +113,22 @@ security` for every table that has RLS on, so a table without it had RLS off whe
 that a local stack or a preview branch built from such migrations lacks the trigger unless a
 migration creates it, so RLS can be on in production and off locally for the same table.
 
+### Policies created inside `do` blocks
+
+Some projects create policies inside a `do` block, for example only if the policy does not exist
+yet. The replay does not run plpgsql, so a table whose policies a `do` block creates, alters or
+drops (with RLS on) is skipped, not reported (reason `policy-uncertain`). A block that builds the
+table name at run time makes every table's policies unknown from that point. The mark stays until
+the table is dropped. With `reportUnresolved`, the rule names the migration file and line of the
+block. To have such a table checked, write its policies as plain statements:
+
+```sql
+-- Instead of a do block that creates the policy only if it is missing:
+drop policy if exists "orders are readable" on public.orders;
+create policy "orders are readable" on public.orders
+  for select to authenticated using (true);
+```
+
 ### Reads through functions
 
 A table with RLS on and no policy is a common, deliberate pattern when every read goes through a
@@ -134,8 +150,8 @@ is not a string literal (or a union of at most five), an operation not chained t
 subscription with no `table` or a non-literal `event`, a client it cannot trace to the call that
 created it, a client whose key is neither visibly publishable nor service role when
 `settings.supabase.unknownKey` is `skip`, a file with no `supabase/migrations` folder above it, a
-replay that fails, and a table that no migration creates. Set `reportUnresolved` to report skipped
-calls.
+replay that fails, a table that no migration creates, and a table whose policies a `do` block
+changes. Set `reportUnresolved` to report skipped calls.
 
 ## Options
 

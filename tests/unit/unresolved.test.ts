@@ -17,6 +17,7 @@ const FRAGMENTS: Record<StatsReason, string> = {
   'unknown-table': '`public.x` is not created as a table',
   view: '`public.x` is a view',
   'publication-uncertain': 'whether `public.x` is a member is unknown',
+  'policy-uncertain': 'changes the policies of `public.x`',
 };
 
 describe('unresolvedReason', () => {

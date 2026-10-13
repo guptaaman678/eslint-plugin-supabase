@@ -68,7 +68,7 @@ That is why the plugin must be loaded as an ES module ([Configuration](./configu
 A rule that cannot resolve something does not guess and does not report. It skips the call and
 counts it, by reason: a table or schema name that is not a literal, a subscription to every table,
 a client it cannot trace, a file with no Supabase project above it, a table no migration creates,
-a view, a publication changed inside a `do` block, or a replay that fails. Set a schema rule's
+a view, a publication or a table's policies changed inside a `do` block, or a replay that fails. Set a schema rule's
 `reportUnresolved` option to report these calls, or set `ESLINT_PLUGIN_SUPABASE_STATS` to count
 them ([Configuration](./configuration.md#skip-statistics)).
 
@@ -87,8 +87,10 @@ them ([Configuration](./configuration.md#skip-statistics)).
   mapped in `settings.supabase.clients`.
 - **Code in `do` blocks and functions.** The replay does not run plpgsql. A publication changed
   inside a `do` block makes that publication's membership unknown, and `realtime-table-published`
-  skips it. Policies, grants and row level security changed inside a `do` block or a function body
-  are not seen.
+  skips it. A policy created, altered or dropped inside a `do` block makes that table's policies
+  unknown (every table's, when the block builds the table name at run time), and `rls-readable`
+  skips the table. Grants and row level security changed inside a `do` block, and anything changed
+  inside a function body, are not seen.
 - **RPC.** `.rpc()` calls are checked by `no-unsent-query`, but not against the schema.
 - **Column grants.** A role that holds a privilege on some columns counts as holding it. Whether
   those columns cover the ones a call uses is not checked.

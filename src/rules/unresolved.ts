@@ -30,6 +30,8 @@ export function unresolvedReason(reason: StatsReason, table?: string): string {
       return `\`${table}\` is not created as a table in your migrations. Set \`reportUnknownTables\` to report it.`;
     case 'view':
       return `\`${table}\` is a view, and row level security applies to the tables it reads. Check the policies of those tables.`;
+    case 'policy-uncertain':
+      return `a migration changes the policies of \`${table}\` in a way this rule cannot read (a \`do\` block), so which policies it has is unknown.`;
     case 'publication-uncertain':
       return `a migration changes the publication in a way this rule cannot read (a \`do\` block or a function body), so whether \`${table}\` is a member is unknown.`;
   }

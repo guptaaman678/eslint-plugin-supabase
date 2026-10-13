@@ -18,6 +18,8 @@ import type { Subscription, TableCall } from '../../src/supabase/calls.js';
 import { AT, fakeView } from '../harness/fake-snapshot.js';
 import { schemaFixture, TS_FIXTURE_DIR } from '../harness/rule-tester.js';
 
+const DO_AT = { file: 'supabase/migrations/0002_policies.sql', line: 4, column: 1 };
+
 const view = fakeView({
   relations: {
     // RLS on, no policy.
@@ -59,6 +61,9 @@ const view = fakeView({
     },
     // A materialized view: RLS never applies.
     'public.score_totals': { kind: 'materialized view' },
+    // Policies a `do` block changes (ADR-023): with RLS on (no known policy), and with RLS off.
+    'public.messages_log': { rls: true, policiesUncertain: DO_AT },
+    'app.messages': { policiesUncertain: DO_AT },
   },
 });
 
@@ -87,6 +92,20 @@ describe('rlsVerdict', () => {
       kind: 'skip',
       reason: 'unknown-relation',
     });
+  });
+
+  it('skips a table with RLS on whose policies a do block changes, with its location', () => {
+    const skip = { kind: 'skip', reason: 'policy-uncertain', at: DO_AT };
+    expect(rlsVerdict(view, table('messages_log'), DEFAULT, READ, NONE)).toEqual(skip);
+    expect(rlsVerdict(view, table('messages_log'), DEFAULT, SUBSCRIPTION, NONE)).toEqual(skip);
+    expect(rlsVerdict(view, table('messages_log'), DEFAULT, write('delete', true), NONE)).toEqual(
+      skip,
+    );
+    // RLS off decides first, and `ignoreTables` still wins.
+    expect(rlsVerdict(view, table('messages', 'app'), DEFAULT, READ, NONE)).toEqual(OK);
+    expect(
+      rlsVerdict(view, table('messages_log'), DEFAULT, READ, new Set(['public.messages_log'])),
+    ).toEqual(OK);
   });
 
   it('reports a read or subscription with no select policy', () => {
@@ -305,6 +324,18 @@ describe('rls-readable in ESLint', () => {
       view: (before.skips.view ?? 0) + 1,
       'unknown-relation': (before.skips['unknown-relation'] ?? 0) + 1,
     });
+  });
+
+  it('counts a table whose policies a do block changes, and names the block when asked', () => {
+    const doBlock = { supabase: { projectDir: schemaFixture('rls-policy-do-block') } };
+    const before = stats.snapshot().skips['policy-uncertain'] ?? 0;
+    expect(lint(SELECT('todos'), doBlock)).toEqual([]);
+    expect((stats.snapshot().skips['policy-uncertain'] ?? 0) - before).toBe(1);
+    const [message] = lint(SELECT('todos'), doBlock, { reportUnresolved: true });
+    expect(message?.messageId).toBe('policiesUncertain');
+    expect(message?.message).toContain(
+      'policies of `public.todos` at supabase/migrations/20260101000000_tables.sql:13 ',
+    );
   });
 
   it('skips a file outside any project before mapping clients by module', () => {

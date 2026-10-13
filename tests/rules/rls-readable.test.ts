@@ -104,6 +104,9 @@ function unresolved(
 }
 
 const F = 'rls-readable';
+/** Policies created in `do` blocks (ADR-023): on `todos` (RLS on) and `scores` (RLS off). */
+const DO_BLOCK = 'rls-policy-do-block';
+const DO_BLOCK_AT = 'supabase/migrations/20260101000000_tables.sql:13';
 const SERVICE_ROLE_CLIENT = [
   "import { createClient } from '@supabase/supabase-js';",
   "const admin = createClient('http://localhost:54321', process.env.SUPABASE_SERVICE_ROLE_KEY!);",
@@ -193,6 +196,10 @@ createRuleTester().run('rls-readable', rlsReadable, {
     valid(F, DYNAMIC_EVENT),
     from('orders', '.select()'),
     valid('bad-config', from('todos', '.select()')),
+    // A `do` block creates the policy (ADR-023): skipped, not reported; RLS off decides first.
+    valid(DO_BLOCK, from('todos', '.select()')),
+    valid(DO_BLOCK, from('todos', ".update({ title: 'x' }).eq('id', 1)")),
+    valid(DO_BLOCK, from('scores', '.select()'), { reportUnresolved: true }),
     // Not a table call: RPC, broadcast, a local class.
     valid(F, code("export const done = supabase.rpc('archive_orders');")),
     valid(
@@ -313,5 +320,17 @@ createRuleTester().run('rls-readable', rlsReadable, {
     unresolved('bad-config', from('todos', '.select()'), 'engine-error'),
     unresolved(F, from('not_created', '.select()'), 'unknown-relation', 'public.not_created'),
     unresolved(F, from('todo_titles', '.select()'), 'view', 'public.todo_titles'),
+    // A table whose policies a `do` block changes, with the block's location (ADR-023).
+    {
+      ...valid(DO_BLOCK, from('todos', '.select()'), { reportUnresolved: true }),
+      errors: [
+        {
+          messageId: 'policiesUncertain',
+          data: { table: 'public.todos', location: DO_BLOCK_AT },
+        },
+      ],
+    },
+    // The mark covers only the table the block names: `orders` is still checked.
+    report(DO_BLOCK, from('orders', '.select()'), 'noSelectPolicy', ['public.orders']),
   ],
 });

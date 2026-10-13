@@ -49,6 +49,8 @@ export interface FakeRelation {
   /** Grantee to privileges held only on some columns. */
   readonly columnGrants?: Readonly<Record<string, readonly string[]>>;
   readonly policies?: readonly FakePolicy[];
+  /** Where a `do` block made the policies unknown (ADR-023). */
+  readonly policiesUncertain?: SnapshotLocation;
 }
 
 /** A relation, `schema.name` or `name` (schema `public`). */
@@ -83,7 +85,7 @@ export function fakeRelation(qualified: string, fake: FakeRelation = {}): Snapsh
       created: AT,
       altered: null,
     })),
-    policiesUncertain: null,
+    policiesUncertain: fake.policiesUncertain ?? null,
   };
 }
 
