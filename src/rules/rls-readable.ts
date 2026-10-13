@@ -274,7 +274,11 @@ export const rlsReadable = createRule<[Options], MessageId>({
           for (const name of call.tables) {
             const table = qualified({ schema, name });
             const verdict = rlsVerdict(view, { schema, name }, client.roles, access, ignored);
-            if (verdict.kind === 'skip' && verdict.reason === 'policy-uncertain') {
+            if (verdict.kind === 'skip') {
+              if (verdict.reason !== 'policy-uncertain') {
+                unresolved(node, verdict.reason, table);
+                continue;
+              }
               stats.recordCall(node, verdict.reason);
               if (!options.reportUnresolved) continue;
               context.report({
@@ -282,10 +286,6 @@ export const rlsReadable = createRule<[Options], MessageId>({
                 messageId: 'policiesUncertain',
                 data: { table, location: locationText(verdict.at) },
               });
-              continue;
-            }
-            if (verdict.kind === 'skip') {
-              unresolved(node, verdict.reason, table);
               continue;
             }
             stats.recordCall(node, undefined);
