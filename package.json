@@ -38,6 +38,7 @@
     "mutation:check": "node scripts/mutation-check.mjs",
     "bench": "npm run build && node scripts/bench.mjs",
     "pack-check": "node scripts/pack-install-check.js",
+    "readme:check": "npm run build && node scripts/readme-check.mjs",
     "ci:local": "node scripts/ci-local.mjs",
     "demo:check": "npm run build && node media/demo/check.mjs"
   },

@@ -1,37 +1,101 @@
 # eslint-plugin-supabase
 
-[![mutation](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml/badge.svg)](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml)
+ESLint rules for the Supabase calls that fail without an error: queries that are never sent,
+subscriptions that never fire, and reads that return nothing, flagged in your editor as you type.
 
-ESLint rules that catch Supabase mistakes that TypeScript cannot: unsent query builders, missing
-realtime subscribe status handlers, unpublished realtime tables, and RLS or grant mismatches, all
-found by reading your migrations, not by calling your database.
-
-Not affiliated with or endorsed by Supabase.
+[![npm](https://img.shields.io/npm/v/eslint-plugin-supabase)](https://www.npmjs.com/package/eslint-plugin-supabase)
+[![ci](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/ci.yml/badge.svg)](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/guptaaman678/eslint-plugin-supabase/badge)](https://scorecard.dev/viewer/?uri=github.com/guptaaman678/eslint-plugin-supabase)
+[![mutation testing](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml/badge.svg)](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ![ESLint reporting a voided insert that is never sent, and a realtime subscription to a table that is not in the supabase_realtime publication](./media/demo.gif)
 
-## Status
+Some rules read your code alone. The schema rules also replay your `supabase/migrations` and flag
+the calls the resulting database can never serve. The plugin reads files only: no database
+connection, no telemetry.
 
-Pre-release. Nothing is published to npm yet; see the project's
-[CHANGELOG](./CHANGELOG.md) for what has shipped.
+## Quick start
 
-## Installation
+In a TypeScript project (a `tsconfig.json` that includes your source files) that uses
+`@supabase/supabase-js`, on Node 22.13 or later:
 
 ```sh
-npm install --save-dev eslint-plugin-supabase
+npm install --save-dev eslint-plugin-supabase eslint @typescript-eslint/parser "typescript@>=5.8 <6.1"
 ```
 
-Peer dependency ranges (`eslint`, `typescript`, `@typescript-eslint/parser`) are still provisional
-and will be finalized before the first rule ships.
-
-## Usage
+Every rule reads TypeScript types, so the plugin needs typed linting (typescript-eslint's parser
+with `projectService`). TypeScript 7 is not supported by typescript-eslint yet, hence the range.
 
 ```js
-// eslint.config.js
+// eslint.config.mjs
+import parser from '@typescript-eslint/parser';
 import supabase from 'eslint-plugin-supabase';
 
-export default [supabase.configs.recommended];
+export default [
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parser,
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
+  },
+  supabase.configs.recommended,
+];
 ```
+
+If you already use typescript-eslint's typed configs (`recommendedTypeChecked`), add
+`supabase.configs.recommended` after them. Then lint:
+
+```sh
+npx eslint .
+```
+
+A file like this one:
+
+```ts
+// src/todos.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient('https://example.supabase.co', 'sb_publishable_example');
+
+export function addTodo(title: string) {
+  void supabase.from('todos').insert({ title });
+}
+```
+
+reports:
+
+```text
+  7:3  error  This Supabase query is lazy, so `void` discards it before it is sent and the request never happens. Use `await`, or call `.then()` to send it without waiting  supabase/no-unsent-query
+```
+
+## What it catches
+
+- A query builder (or storage download) that is voided or left as a bare statement never sends the
+  request: [`no-unsent-query`](docs/rules/no-unsent-query.md).
+- `.subscribe()` without a status callback hides `CHANNEL_ERROR` and `TIMED_OUT`:
+  [`subscribe-status-handler`](docs/rules/subscribe-status-handler.md).
+- A `postgres_changes` subscription to a table outside the `supabase_realtime` publication reaches
+  `SUBSCRIBED` and never fires: [`realtime-table-published`](docs/rules/realtime-table-published.md).
+- A client read, filtered update or delete, or subscription on a table with row level security and
+  no policy for the role returns or changes nothing, with no error:
+  [`rls-readable`](docs/rules/rls-readable.md).
+- A client call on a table the role holds no privilege for fails with `42501` (on new tables after
+  the 2026-10-30 change), and a subscription to it receives nothing:
+  [`table-granted`](docs/rules/table-granted.md).
+
+## How the schema rules find your migrations
+
+`realtime-table-published`, `rls-readable` and `table-granted` look for the nearest folder above
+each linted file that has `supabase/migrations` (or the `projectDir` setting), and replay those
+migrations with the [supabase-grants-lint](https://github.com/guptaaman678/supabase-grants-lint)
+engine. They read grants-lint's own config (`grants-lint.config.json` or `package.json#grantsLint`),
+so both tools replay the same database. The role of each call comes from the key the client was
+created with: a publishable or anon key means `anon` or `authenticated`, a service role or secret
+key means `service_role`. A file with no migrations above it, a table name that is not a literal or
+a client the plugin cannot trace is skipped, never guessed. Details:
+[docs/how-it-works.md](docs/how-it-works.md).
 
 ## Rules
 
@@ -54,6 +118,40 @@ export default [supabase.configs.recommended];
 
 <!-- end auto-generated rules list -->
 
+## Configuration
+
+`recommended` turns on every rule (`subscribe-status-handler` as a warning) for `.ts`, `.tsx`,
+`.mts` and `.cts` files and skips `supabase/functions` (Deno edge functions are not supported).
+Everything else is optional, under `settings.supabase`:
+
+- `projectDir`: the folder that holds `supabase/migrations`, when it is not above the linted files.
+- `clients`: map your own client factories or files to a role, for example
+  `{ callee: 'createAdminClient', role: 'service_role' }`.
+- `defaultRoles`: the roles a publishable-key client can run as (`anon` and `authenticated`).
+- `unknownKey`: whether a client whose key the plugin cannot classify uses `defaultRoles` or is
+  skipped.
+- `grantsLintConfig`: a grants-lint config file to use instead of grants-lint's own lookup.
+
+The plugin is an ES module; a CommonJS config imports it with `import()`. All settings, rule
+options, monorepos (`withProject`) and `eslint --cache`:
+[docs/configuration.md](docs/configuration.md).
+
+## FAQ
+
+"Does it connect to my database?", "Why does it need type information?", "Why did it flag my table
+that works in production?": see the [FAQ](docs/faq.md).
+
+## Works with supabase-grants-lint
+
+[supabase-grants-lint](https://github.com/guptaaman678/supabase-grants-lint) checks the migrations
+themselves and prints the `grant` that fixes a table. This plugin uses its engine and its config to
+show the same problem at the line of client code that will break. They run independently; neither
+needs the other installed by hand.
+
+For the 1,000-row PostgREST limit, see [rowcap](https://github.com/anabecalab/rowcap).
+
+Not affiliated with or endorsed by Supabase.
+
 ## License
 
-MIT
+[MIT](LICENSE)
