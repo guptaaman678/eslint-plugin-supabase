@@ -272,4 +272,33 @@ describe('isRefinementMethod', () => {
     const csv = { name: 'csv', declarations: [] } as unknown as ts.Symbol;
     expect(isRefinementMethod(csv)).toBe(false);
   });
+
+  it('is true only for the methods the two PostgREST builder classes declare', () => {
+    const found = collect<TSESTree.MemberExpression, [string, boolean[]]>(
+      CLIENT +
+        [
+          "const q = supabase.from('todos').select();",
+          "void q.eq('id', 1).order('id').single();",
+          'class Local {\n  eq() {\n    return this;\n  }\n}',
+          'void new Local().eq();',
+          'const literal = { eq: () => 1 };',
+          'void literal.eq();',
+        ].join('\n'),
+      AST_NODE_TYPES.MemberExpression,
+      (node, { checker, text, tsNode }) => {
+        if (node.property.type !== AST_NODE_TYPES.Identifier) return undefined;
+        const symbol = checker.getSymbolAtLocation(tsNode(node.property));
+        return [text(node), [isRefinementMethod(symbol), isFilterMethod(symbol)]];
+      },
+    );
+    expect(Object.fromEntries(found)).toEqual({
+      "supabase.from('todos').select": [false, false],
+      'supabase.from': [false, false],
+      "q.eq('id', 1).order('id').single": [false, false],
+      "q.eq('id', 1).order": [true, false],
+      'q.eq': [true, true],
+      'new Local().eq': [false, false],
+      'literal.eq': [false, false],
+    });
+  });
 });

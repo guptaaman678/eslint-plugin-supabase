@@ -112,6 +112,23 @@ createRuleTester().run('no-unsent-query', noUnsentQuery, {
       target: "t.select().eq('id', 1)",
       then: "void t.select().eq('id', 1).then()",
     }),
+    // Only a floating statement refines in place: `void` still discards the query.
+    invalid("const q = supabase.from('todos').select();\nvoid q.eq('id', 1);", {
+      messageId: 'voidBuilder',
+      target: "void q.eq('id', 1)",
+      then: "void q.eq('id', 1).then()",
+    }),
+    // Only a builder held in a variable or parameter: not one held in a property.
+    invalid("const box = { q: supabase.from('todos').select() };\nbox.q.eq('id', 1);", {
+      messageId: 'floatingBuilder',
+      target: "box.q.eq('id', 1)",
+      then: "void box.q.eq('id', 1).then()",
+    }),
+    // Only a query builder variable: `select` on a value that only borrows the method makes one.
+    invalid(
+      "const q = supabase.from('todos').select();\ndeclare const p: Pick<typeof q, 'select'>;\np.select();",
+      { messageId: 'floatingBuilder', target: 'p.select()', then: 'void p.select().then()' },
+    ),
     // ADR-006 item 4: bare from().insert(), rpc(), storage download, and inside a forEach body.
     invalid(`${insert};`, {
       messageId: 'floatingBuilder',

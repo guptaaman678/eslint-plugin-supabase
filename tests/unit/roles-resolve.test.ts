@@ -117,6 +117,11 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     ],
     ['Deno.env.get()', DENO, UNKNOWN],
     ['Deno.env.get(name)', `${DENO}\ndeclare const name: string;`, UNKNOWN],
+    [
+      'getEnv(serviceRoleKey)',
+      'declare function getEnv(name: string): string;\ndeclare const serviceRoleKey: string;',
+      UNKNOWN,
+    ],
     ['`${prefix}_key`', 'declare const prefix: string;', UNKNOWN],
   ])('createClient(url, %s)', (key, prelude, expected) => {
     expect(only(keyed(key, prelude))).toEqual(expected);
@@ -349,6 +354,21 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `const admin = (x: boolean, y: boolean) =>\n  x ? (y ? ${anon} : undefined) : createClient(${URL_ARG}, 'sb_publishable_test');\n`,
       CLIENT_KEY,
     ],
+    [
+      'two branches through the same factory',
+      `function inner() { return ${secret}; }\nfunction admin(x: boolean) {\n  return x ? inner() : inner();\n}\n`,
+      SERVICE,
+    ],
+    [
+      'a module-level let with an initialiser',
+      `let cached = ${secret};\nfunction admin() {\n  return cached;\n}\n`,
+      SERVICE,
+    ],
+    [
+      'a singleton compared with another value, which is no assignment',
+      `let cached = ${secret};\ndeclare const other: unknown;\nvoid (cached === other);\nfunction admin() {\n  return cached;\n}\n`,
+      SERVICE,
+    ],
   ])('decides by %s', (_, factory, expected) => {
     expect(only(head + factory + call('admin'))).toEqual(expected);
   });
@@ -395,6 +415,22 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `let cached = ${secret};\nfunction admin() {\n  cached = createClient(${URL_ARG}, process.env.KEY!);\n  return cached;\n}\n`,
     ],
     ['a declared function', 'declare function admin(): ReturnType<typeof createClient>;\n'],
+    [
+      'a call of an untyped function',
+      `declare const make: any;\nfunction admin(): ReturnType<typeof createClient> {\n  return make();\n}\n`,
+    ],
+    [
+      'an undeclared name',
+      `function admin(): ReturnType<typeof createClient> {\n  return undeclaredDb;\n}\n`,
+    ],
+    [
+      'a module-level let read through a namespace import',
+      `import * as fixtures from './admin';\nfunction admin() {\n  return fixtures.sharedDb;\n}\n`,
+    ],
+    [
+      'a factory of a dependency in node_modules',
+      `import { createVendorDb } from 'vendor-db';\nconst admin = createVendorDb;\n`,
+    ],
   ])('falls back to step 4 on %s', (_, factory) => {
     expect(only(head + factory + call('admin'))).toEqual(UNKNOWN);
   });

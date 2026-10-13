@@ -17,6 +17,12 @@ export function createServerDb() {
 
 export const adminDb = createClient(url, 'sb_secret_test');
 
+export let sharedDb: ReturnType<typeof createClient> = createClient(url, 'sb_secret_test');
+
+export function resetSharedDb() {
+  sharedDb = createClient(url, 'sb_secret_test');
+}
+
 export class Repo {
   client() {
     return createClient(url, 'sb_publishable_test');
