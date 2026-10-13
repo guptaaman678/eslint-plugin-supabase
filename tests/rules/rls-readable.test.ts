@@ -177,6 +177,8 @@ createRuleTester().run('rls-readable', rlsReadable, {
     // Real migrations: an altered policy, a `db pull` baseline, the auto-RLS trigger.
     valid('policies', from('todos', '.select()')),
     valid('db-pull', from('todos', '.select()')),
+    // The baseline's own tables keep their dumped RLS state (ADR-019): `messages` has RLS off.
+    valid('db-pull', subscribe('messages')),
     valid('rls-auto-trigger', from('messages', '.select()')),
     valid('rls-auto-trigger', from('scores', '.select()')),
     // Not resolvable: skipped and counted, never guessed.
@@ -237,14 +239,11 @@ createRuleTester().run('rls-readable', rlsReadable, {
     report(F, subscribe('orders'), 'subscriptionNoEvents', ['public.orders']),
     report(F, subscribe('orders', 'INSERT'), 'subscriptionNoEvents', ['public.orders']),
     report(F, subscribe('audit_log', 'UPDATE'), 'subscriptionNoEvents', ['public.audit_log']),
-    // RLS from the `ensure_rls` trigger (ADR-010), in a migration and in a `db pull` baseline.
+    // RLS from the `ensure_rls` trigger (ADR-010), in a migration and after a `db pull` baseline.
     report('rls-auto-trigger', from('todos', '.select()'), 'noSelectPolicy', ['public.todos'], {
       auto: true,
     }),
     report('db-pull', from('scores', '.select()'), 'noSelectPolicy', ['public.scores'], {
-      auto: true,
-    }),
-    report('db-pull', subscribe('messages'), 'subscriptionNoEvents', ['public.messages'], {
       auto: true,
     }),
     // RLS on (and forced) with no policy, in another fixture.

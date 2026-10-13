@@ -12,6 +12,7 @@
         "source": "statement",
         "at": { "file": "supabase/migrations/20260101000000_rls.sql", "line": 6, "column": 1 }
       },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
@@ -52,6 +53,7 @@
       "kind": "table",
       "created": { "file": "supabase/migrations/20260101000000_rls.sql", "line": 8, "column": 1 },
       "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
@@ -97,6 +99,7 @@
         "source": "statement",
         "at": { "file": "supabase/migrations/20260101000000_rls.sql", "line": 18, "column": 1 }
       },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
@@ -142,6 +145,7 @@
         "source": "statement",
         "at": { "file": "supabase/migrations/20260101000000_rls.sql", "line": 29, "column": 1 }
       },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",

@@ -55,7 +55,7 @@ describe('checkSnapshot', () => {
     expect(call).toThrow(expect.objectContaining({ name: 'SnapshotVersionError' }));
     expect(call).toThrow(
       `eslint-plugin-supabase reads schema snapshot version 1, but supabase-grants-lint 0.9.0 ` +
-        `returned version ${v}. Install supabase-grants-lint ^0.3.0, the range ` +
+        `returned version ${v}. Install supabase-grants-lint ^0.3.2, the range ` +
         `eslint-plugin-supabase depends on.`,
     );
   });
@@ -104,7 +104,7 @@ describe('the real engine', () => {
     };
     expect(engine.version).toBe(installed.version);
     expect(ENGINE_RANGE).toBe(pkg.dependencies['supabase-grants-lint']);
-    expect(ENGINE_RANGE).toBe('^0.3.0');
+    expect(ENGINE_RANGE).toBe('^0.3.2');
   });
 
   it('loads, and shares one cache per thread', async () => {

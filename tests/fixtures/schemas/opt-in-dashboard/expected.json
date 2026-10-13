@@ -7,6 +7,7 @@
       "kind": "table",
       "created": { "file": "supabase/migrations/20260101000000_init.sql", "line": 1, "column": 1 },
       "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
@@ -51,6 +52,7 @@
         "column": 1
       },
       "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "maintain": "table",

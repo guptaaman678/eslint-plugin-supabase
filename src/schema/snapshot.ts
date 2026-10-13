@@ -40,6 +40,11 @@ export interface SnapshotRelation {
    */
   readonly privileges: Readonly<Record<string, Readonly<Record<string, 'table' | 'columns'>>>>;
   readonly policies: readonly SnapshotPolicy[];
+  /**
+   * Where a `do` block that creates, alters or drops a policy on this relation (or on a name built
+   * at run time) made `policies` incomplete, or `null`.
+   */
+  readonly policiesUncertain: SnapshotLocation | null;
 }
 
 export interface SnapshotPolicy {

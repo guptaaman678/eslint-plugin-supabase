@@ -105,8 +105,11 @@ Supabase offers an opt-in event trigger, `ensure_rls`, that turns RLS on for eve
 `public`. The replay follows it: a table created while the trigger exists has RLS on even with no
 `enable row level security` statement, and the message says "RLS is on via the `ensure_rls`
 trigger". A first `supabase db pull` keeps the trigger's function `public.rls_auto_enable()` but
-not the trigger itself, so the replay also treats the trigger as present from that function on
-(grants-lint's `autoRls` setting, default `"auto"`; `"off"` counts only explicit statements). Note
+not the trigger itself, so the replay also treats the trigger as present from the migration file
+after the one that defines that function (grants-lint's `autoRls` setting, default `"auto"`;
+`"off"` counts only explicit statements). Tables in that same file, such as the pulled baseline's
+own tables, keep the RLS state their own statements give: a dump writes `enable row level
+security` for every table that has RLS on, so a table without it had RLS off when it was pulled. Note
 that a local stack or a preview branch built from such migrations lacks the trigger unless a
 migration creates it, so RLS can be on in production and off locally for the same table.
 

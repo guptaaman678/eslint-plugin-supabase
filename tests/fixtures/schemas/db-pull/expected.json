@@ -20,6 +20,7 @@
           "column": 1
         }
       },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
@@ -78,16 +79,8 @@
         "line": 50,
         "column": 1
       },
-      "rls": {
-        "enabled": true,
-        "forced": false,
-        "source": "auto-rls",
-        "at": {
-          "file": "supabase/migrations/20260101000000_remote_schema.sql",
-          "line": 18,
-          "column": 1
-        }
-      },
+      "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "policiesUncertain": null,
       "privileges": {
         "authenticated": { "select": "table" },
         "service_role": {
@@ -122,6 +115,7 @@
           "column": 1
         }
       },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",

@@ -23,13 +23,6 @@
         "ruleId": "supabase/rls-readable",
         "severity": 2,
         "message": "`public.scores` has row level security on (RLS is on via the `ensure_rls` trigger) and no select policy for anon or authenticated in your migrations, so this read returns no rows and no error. Add a select policy, or read it through a function or a server-side client."
-      },
-      {
-        "line": 22,
-        "column": 10,
-        "ruleId": "supabase/rls-readable",
-        "severity": 2,
-        "message": "`public.messages` has row level security on (RLS is on via the `ensure_rls` trigger) and no select policy for anon or authenticated in your migrations, so this subscription receives no insert or update events, and delete events arrive with only the primary key. Add a select policy."
       }
     ]
   },

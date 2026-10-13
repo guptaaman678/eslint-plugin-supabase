@@ -83,6 +83,7 @@ export function fakeRelation(qualified: string, fake: FakeRelation = {}): Snapsh
       created: AT,
       altered: null,
     })),
+    policiesUncertain: null,
   };
 }
 

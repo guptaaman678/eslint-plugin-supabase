@@ -20,6 +20,7 @@
           "column": 1
         }
       },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",

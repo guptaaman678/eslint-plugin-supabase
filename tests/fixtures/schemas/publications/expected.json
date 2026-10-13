@@ -11,6 +11,7 @@
         "column": 1
       },
       "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
@@ -55,6 +56,7 @@
         "column": 1
       },
       "rls": { "enabled": false, "forced": false, "source": "default", "at": null },
+      "policiesUncertain": null,
       "privileges": {
         "anon": {
           "delete": "table",
