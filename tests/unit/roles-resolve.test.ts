@@ -85,6 +85,13 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
       SERVICE,
     ],
     ['getEnv(`SUPABASE_SERVICE_KEY`)', 'declare function getEnv(name: string): string;', SERVICE],
+    // A string method without arguments keeps the key it is called on.
+    ['process.env.SUPABASE_SERVICE_ROLE_KEY!.trim()', '', SERVICE],
+    ["(process.env.SUPABASE_SECRET_KEY ?? '').trimEnd()", '', SERVICE],
+    ['serviceKey.toString()', 'declare const serviceKey: string;', SERVICE],
+    ['serviceKey.trimStart()', 'declare const serviceKey: string;', SERVICE],
+    ['serviceKey.valueOf()', 'declare const serviceKey: string;', SERVICE],
+    ['import.meta.env.VITE_SUPABASE_ANON_KEY.trim()', '', CLIENT_KEY],
     // Step 3: anon and publishable names and the publishable prefix.
     ["'sb_publishable_test'", '', CLIENT_KEY],
     ['import.meta.env.VITE_SUPABASE_ANON_KEY', '', CLIENT_KEY],
@@ -109,6 +116,11 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
     ['process.env[name]!', 'declare const name: string;', UNKNOWN],
     ['process.env[serviceRoleKey]!', 'declare const serviceRoleKey: string;', UNKNOWN],
     ['getKey()', 'declare function getKey(): string;', UNKNOWN],
+    // Only string methods without arguments: other methods and `slice(1)` say nothing.
+    ['keys.service_role_key()', 'declare const keys: { service_role_key(): string };', UNKNOWN],
+    ['process.env.SUPABASE_SERVICE_ROLE_KEY!.slice(1)', '', UNKNOWN],
+    ['serviceKey.trim(1)', 'declare const serviceKey: { trim(n: number): string };', UNKNOWN],
+    ['serviceConfig.load()', 'declare const serviceConfig: { load(): string };', UNKNOWN],
     ["getEnv('SUPABASE_KEY')", 'declare function getEnv(name: string): string;', UNKNOWN],
     [
       "getEnv(name, 'SUPABASE_SERVICE_ROLE_KEY')",
@@ -147,6 +159,11 @@ describe('§6.5 steps 2 to 4: the key argument', () => {
       'process.env.SUPABASE_SERVICE_ROLE_KEY!' + ' ?? a'.repeat(levels);
     expect(only(keyed(left(15), prelude))).toEqual(SERVICE);
     expect(only(keyed(left(16), prelude))).toEqual(UNKNOWN);
+    // Each string method is one level too.
+    const trimmed = (levels: number) =>
+      'process.env.SUPABASE_SERVICE_ROLE_KEY!' + '.trim()'.repeat(levels);
+    expect(only(keyed(trimmed(15)))).toEqual(SERVICE);
+    expect(only(keyed(trimmed(16)))).toEqual(UNKNOWN);
   });
 
   it('stops on a const cycle', () => {

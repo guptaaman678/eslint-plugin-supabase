@@ -329,11 +329,21 @@ function suppliedKeyKind(checker: ts.TypeChecker, origin: ClientOrigin): KeyKind
   return undefined;
 }
 
+/** String methods that return the same key, so `key.trim()` is read as `key`. */
+const KEY_STRING_METHODS: ReadonlySet<string> = new Set([
+  'trim',
+  'trimStart',
+  'trimEnd',
+  'toString',
+  'valueOf',
+]);
+
 /**
  * Collects the names and string literals a key expression is made of: identifiers along a
  * `const` chain, the property of `a.b` or `a['b']` (so `process.env.X` and `import.meta.env.X`
  * give `X`), the string literal first argument of a call (`Deno.env.get('X')`, `getEnv('X')`,
- * `config.get('X')`: ADR-022 item 4), and both sides of `??` and `||`.
+ * `config.get('X')`: ADR-022 item 4), the receiver of a string method without arguments
+ * (`process.env.X!.trim()`), and both sides of `??` and `||`.
  */
 function keyParts(
   checker: ts.TypeChecker,
@@ -361,6 +371,13 @@ function keyParts(
       (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
     ) {
       names.push(argument.text);
+    } else if (
+      node.arguments.length === 0 &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      KEY_STRING_METHODS.has(node.expression.name.text)
+    ) {
+      // `process.env.X!.trim()` is still the key named X.
+      keyParts(checker, node.expression.expression, names, literals, depth + 1);
     }
   } else if (
     ts.isBinaryExpression(node) &&
