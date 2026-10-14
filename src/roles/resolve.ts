@@ -51,12 +51,13 @@ type ClientOrigin = ts.CallExpression | ts.NewExpression;
  * 3. a key name that says anon or publishable, or a literal starting with `sb_publishable_`:
  *    `settings.supabase.defaultRoles`;
  * 4. any other origin: `defaultRoles`, or skipped as `unknown-key` when `unknownKey` is `skip`;
- * 5. no origin (a parameter, a `let`, a property, `new` of a class outside supabase-js): skipped
- *    as `unknown-client`.
+ * 5. no origin (a parameter, a `let`, a property, a call of one of these, `new` of a class
+ *    outside supabase-js): skipped as `unknown-client`.
  *
  * For an origin that calls the project's own factory, steps 2 and 3 read the clients that factory
  * returns, up to three factories deep: when every returned client is a supabase-js factory whose
- * key steps 2 and 3 classify the same way, that class decides (ADR-022).
+ * key steps 2 and 3 classify the same way, that class decides (ADR-022). When any returned value
+ * has no origin (a test seam such as `client = c`), the call is skipped as in step 5 (ADR-025).
  *
  * Only names and prefixes in the source text are read. Key values are never decoded or kept.
  */
@@ -73,6 +74,7 @@ export function resolveClientRoles(
   const mapping = mappedClient(checker, origin, settings.clients, projectDir);
   if (mapping !== undefined) return { roles: mapping.roles, source: 'settings', skip: undefined };
   const key = keyKind(checker, origin);
+  if (key === 'untraceable') return { roles: NO_ROLES, source: undefined, skip: 'unknown-client' };
   if (key === 'service-role') {
     return { roles: SERVICE_ROLE, source: 'service-role-key', skip: undefined };
   }
@@ -103,6 +105,8 @@ function clientOrigin(checker: ts.TypeChecker, node: ts.Expression): ClientOrigi
     // `new Proxy(...)` and other classes outside supabase-js say nothing about the key.
     if (ts.isNewExpression(origin)) return supabaseClass(checker, origin) ? origin : undefined;
     if (!ts.isCallExpression(origin)) return undefined;
+    // Calling a parameter, a `let` or a property that holds a function says nothing (ADR-025).
+    if (untraceableCallee(checker, origin)) return undefined;
     const declaration = declarationOf(checker, origin);
     // A supabase-js method (`.schema(s)`, `.channel(name)`, `.on(...)`) keeps its receiver's key.
     if (declaration === undefined || !ts.isMethodDeclaration(declaration)) return origin;
@@ -111,6 +115,31 @@ function clientOrigin(checker: ts.TypeChecker, node: ts.Expression): ClientOrigi
     node = origin.expression.expression;
   }
   return undefined;
+}
+
+/**
+ * Whether a call's callee is a value the project does not fix: a parameter, a destructured
+ * name, a `let` or `var`, or a property or class field (not a method). Declarations in
+ * supabase-js are always traceable.
+ */
+function untraceableCallee(checker: ts.TypeChecker, origin: ts.CallExpression): boolean {
+  const callee = resolveExpression(checker, origin.expression);
+  const name = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
+  if (!ts.isIdentifier(name)) return false;
+  let symbol = checker.getSymbolAtLocation(name);
+  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    symbol = checker.getAliasedSymbol(symbol);
+  }
+  const declaration = symbol?.valueDeclaration;
+  if (declaration === undefined || inSupabasePackage(declaration)) return false;
+  return (
+    ts.isParameter(declaration) ||
+    ts.isBindingElement(declaration) ||
+    ts.isPropertySignature(declaration) ||
+    ts.isPropertyDeclaration(declaration) ||
+    (ts.isVariableDeclaration(declaration) &&
+      (ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) === 0)
+  );
 }
 
 /** Whether a `new` constructs a class declared by supabase-js (`SupabaseClient`). */
@@ -157,12 +186,14 @@ function calleeNames(checker: ts.TypeChecker, origin: ClientOrigin): string[] {
 }
 
 type KeyKind = 'service-role' | 'client';
+/** A project factory returns a value that cannot be traced, such as a test seam (ADR-025). */
+type FactoryKind = KeyKind | 'untraceable';
 
 /** Followed project factories, by declaration; null when they decide nothing. */
-const factoryKinds = new WeakMap<ts.Declaration, KeyKind | null>();
+const factoryKinds = new WeakMap<ts.Declaration, FactoryKind | null>();
 
 /** What the key of a client origin visibly is (§6.5 steps 2 and 3). */
-function keyKind(checker: ts.TypeChecker, origin: ClientOrigin): KeyKind | undefined {
+function keyKind(checker: ts.TypeChecker, origin: ClientOrigin): FactoryKind | undefined {
   const declaration = declarationOf(checker, origin);
   if (declaration === undefined) return undefined;
   if (inSupabasePackage(declaration)) return suppliedKeyKind(checker, origin);
@@ -177,35 +208,32 @@ function keyKind(checker: ts.TypeChecker, origin: ClientOrigin): KeyKind | undef
 
 /**
  * The one class of key every client a project factory returns has. Returns of `null` and
- * `undefined` are ignored; any other return that does not lead to a supabase-js factory with a
- * classified key (through at most `MAX_FACTORY_HOPS` project factories, without recursion)
- * decides nothing.
+ * `undefined` are ignored. A return with no origin (a parameter, a `let`, a property, or a call
+ * of one of these), here or in a factory it calls, makes the factory `untraceable` (ADR-025).
+ * Otherwise any return that does not lead to a supabase-js factory with a classified key
+ * (through at most `MAX_FACTORY_HOPS` project factories, without recursion) decides nothing.
  */
 function returnedKeyKind(
   checker: ts.TypeChecker,
   declaration: ts.Declaration,
   hops: number,
   seen: Set<ts.Declaration>,
-): KeyKind | undefined {
+): FactoryKind | undefined {
   if (hops > MAX_FACTORY_HOPS || seen.has(declaration)) return undefined;
   if (!projectFunction(declaration)) return undefined;
   seen.add(declaration);
-  let kind: KeyKind | undefined;
+  const kinds = new Set<FactoryKind | undefined>();
   for (const returned of returnedClients(checker, declaration)) {
     const origin = clientOrigin(checker, returned);
     const inner = origin === undefined ? undefined : declarationOf(checker, origin);
-    let next: KeyKind | undefined;
-    if (origin === undefined || inner === undefined) next = undefined;
-    else if (inSupabasePackage(inner)) next = suppliedKeyKind(checker, origin);
-    else next = returnedKeyKind(checker, inner, hops + 1, seen);
-    if (next === undefined || (kind !== undefined && next !== kind)) {
-      kind = undefined;
-      break;
-    }
-    kind = next;
+    if (origin === undefined) kinds.add('untraceable');
+    else if (inner === undefined) kinds.add(undefined);
+    else if (inSupabasePackage(inner)) kinds.add(suppliedKeyKind(checker, origin));
+    else kinds.add(returnedKeyKind(checker, inner, hops + 1, seen));
   }
   seen.delete(declaration);
-  return kind;
+  if (kinds.has('untraceable')) return 'untraceable';
+  return kinds.size === 1 ? kinds.values().next().value : undefined;
 }
 
 type ProjectFunction = ts.FunctionLikeDeclaration & { readonly body: ts.ConciseBody };
@@ -244,7 +272,11 @@ function returnedClients(checker: ts.TypeChecker, fn: ProjectFunction): ts.Expre
   }
   return returned
     .flatMap(branches)
-    .flatMap((expression) => singletonValues(checker, expression) ?? [expression])
+    .flatMap((expression) => {
+      const values = singletonValues(checker, expression);
+      // A singleton nothing assigns is returned as itself, which has no origin.
+      return values === undefined || values.length === 0 ? [expression] : values;
+    })
     .filter((expression) => !nullish(skipWrappers(expression)));
 }
 

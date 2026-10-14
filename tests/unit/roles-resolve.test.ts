@@ -288,6 +288,27 @@ describe('§6.5: tracing the client to its origin', () => {
     ]);
   });
 
+  it('ADR-025: skips a call of a parameter, a let, a property or a class field', () => {
+    const code =
+      `${CLIENT}type Get = () => Promise<SupabaseClient>;\n` +
+      "async function list(getClient: Get) {\n  const db = await getClient();\n  return db.from('todos').select();\n}\n" +
+      "let make: () => SupabaseClient = () => supabase;\nvoid make().from('todos').select();\n" +
+      "async function viaDeps(deps: { getClient: Get }) {\n  return (await deps.getClient()).from('todos').select();\n}\n" +
+      "class Repo {\n  constructor(private readonly open: () => SupabaseClient) {}\n  field: () => SupabaseClient = () => supabase;\n  list() {\n    void this.open().from('todos').select();\n    return this.field().from('todos').select();\n  }\n}\n" +
+      "async function viaPick({ getClient }: { getClient: Get }) {\n  return (await getClient()).from('todos').select();\n}\n" +
+      "const fixed = { admin: () => supabase };\nvoid fixed.admin().from('todos').select();\n" +
+      'void list;\nvoid viaDeps;\nvoid Repo;\nvoid viaPick;\n';
+    expect(resolveAll(code)).toEqual([
+      { client: 'db', ...NO_CLIENT },
+      { client: 'make()', ...NO_CLIENT },
+      { client: 'await deps.getClient()', ...NO_CLIENT },
+      { client: 'this.open()', ...NO_CLIENT },
+      { client: 'this.field()', ...NO_CLIENT },
+      { client: 'await getClient()', ...NO_CLIENT },
+      { client: 'fixed.admin()', ...CLIENT_KEY },
+    ]);
+  });
+
   it('step 5: stops on a chain too long to follow', () => {
     const chain = (length: number) => Array.from({ length }, () => ".schema('app')").join('');
     expect(only(`${CLIENT}void supabase${chain(17)}.from('scores').select();`)).toEqual(NO_CLIENT);
@@ -396,20 +417,12 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `function admin(x: boolean) {\n  return x ? ${anon} : ${secret};\n}\n`,
     ],
     [
-      'a conditional with an untraceable branch',
-      `function admin(x: boolean, db: ReturnType<typeof createClient>) {\n  return x ? db : ${secret};\n}\n`,
-    ],
-    [
       'returns of different classes',
       `function admin(x: boolean) {\n  if (x) return ${anon};\n  return ${secret};\n}\n`,
     ],
     [
       'an unclassified key',
       `function admin() {\n  return createClient(${URL_ARG}, process.env.KEY!);\n}\n`,
-    ],
-    [
-      'an untraceable return',
-      `function admin(db: ReturnType<typeof createClient>) {\n  return db;\n}\n`,
     ],
     [
       'only null returns',
@@ -424,10 +437,6 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `function admin(n: number): ReturnType<typeof createClient> {\n  if (n > 0) return admin(n - 1);\n  return ${secret};\n}\n`,
     ],
     [
-      'a function-scoped let',
-      `function admin() {\n  let db = ${anon};\n  db = ${secret};\n  return db;\n}\n`,
-    ],
-    [
       'a singleton with an unclassified assignment',
       `let cached = ${secret};\nfunction admin() {\n  cached = createClient(${URL_ARG}, process.env.KEY!);\n  return cached;\n}\n`,
     ],
@@ -435,6 +444,27 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
     [
       'a call of an untyped function',
       `declare const make: any;\nfunction admin(): ReturnType<typeof createClient> {\n  return make();\n}\n`,
+    ],
+    [
+      'a factory of a dependency in node_modules',
+      `import { createVendorDb } from 'vendor-db';\nconst admin = createVendorDb;\n`,
+    ],
+  ])('falls back to step 4 on %s', (_, factory) => {
+    expect(only(head + factory + call('admin'))).toEqual(UNKNOWN);
+  });
+
+  it.each([
+    [
+      'a conditional with an untraceable branch',
+      `function admin(x: boolean, db: ReturnType<typeof createClient>) {\n  return x ? db : ${secret};\n}\n`,
+    ],
+    [
+      'an untraceable return',
+      `function admin(db: ReturnType<typeof createClient>) {\n  return db;\n}\n`,
+    ],
+    [
+      'a function-scoped let',
+      `function admin() {\n  let db = ${anon};\n  db = ${secret};\n  return db;\n}\n`,
     ],
     [
       'an undeclared name',
@@ -445,11 +475,33 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `import * as fixtures from './admin';\nfunction admin() {\n  return fixtures.sharedDb;\n}\n`,
     ],
     [
-      'a factory of a dependency in node_modules',
-      `import { createVendorDb } from 'vendor-db';\nconst admin = createVendorDb;\n`,
+      'a singleton with a test-seam setter',
+      `let cached: ReturnType<typeof createClient> | undefined;\nexport function setDb(db: ReturnType<typeof createClient>) {\n  cached = db;\n}\nfunction admin() {\n  return (cached ??= ${secret});\n}\n`,
     ],
-  ])('falls back to step 4 on %s', (_, factory) => {
-    expect(only(head + factory + call('admin'))).toEqual(UNKNOWN);
+    [
+      'a test-factory branch',
+      `let factoryForTests: (() => ReturnType<typeof createClient>) | undefined;\nexport function setFactory(f: () => ReturnType<typeof createClient>) {\n  factoryForTests = f;\n}\nfunction admin() {\n  if (factoryForTests) return factoryForTests();\n  return ${secret};\n}\n`,
+    ],
+    [
+      'a singleton nothing assigns',
+      'let cached: ReturnType<typeof createClient>;\nfunction admin() {\n  return cached;\n}\n',
+    ],
+    [
+      'an untraceable return in a nested factory',
+      `function inner(db: ReturnType<typeof createClient>) { return db; }\nfunction admin(x: boolean) {\n  return x ? inner(${secret}) : ${anon};\n}\n`,
+    ],
+    [
+      'an untraceable return beside a recursive one',
+      `function admin(n: number, db: ReturnType<typeof createClient>): ReturnType<typeof createClient> {\n  if (n > 0) return admin(n - 1, db);\n  return db;\n}\n`,
+    ],
+  ])('ADR-025: skips as unknown-client on %s', (_, factory) => {
+    expect(only(head + factory + call('admin'))).toEqual(NO_CLIENT);
+  });
+
+  it('ADR-025: settings still win over an untraceable factory', () => {
+    const code = `${head}function admin(db: ReturnType<typeof createClient>) {\n  return db;\n}\n${call('admin')}`;
+    const settings = { clients: [{ callee: 'admin', role: 'service_role' }] };
+    expect(resolveAll(code, settings).map(rolesOnly)).toEqual([mapped('service_role')]);
   });
 
   it('ignores a bare return and assignments to other targets', () => {
