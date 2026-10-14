@@ -136,7 +136,7 @@ function returns (a lazily created client) counts every value assigned to it. Bo
 returned `cond ? client : null` count. `null` and `undefined` returns are ignored. If every returned client has a key that steps 2 and 3 classify the
 same way, that answer is used. If any returned value cannot be traced (step 5), for example a
 test seam such as a setter that stores a client it is given (`client = c`) or a branch that
-returns `factoryForTests()`, the call is skipped as in step 5, since the factory may return a
+returns `testMake()` when a test sets it, the call is skipped as in step 5, since the factory may return a
 client with any role. Otherwise step 4 applies. A `clients` entry still wins, so map such a
 factory to have its calls checked.
 

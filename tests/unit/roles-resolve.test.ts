@@ -480,7 +480,7 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
     ],
     [
       'a test-factory branch',
-      `let factoryForTests: (() => ReturnType<typeof createClient>) | undefined;\nexport function setFactory(f: () => ReturnType<typeof createClient>) {\n  factoryForTests = f;\n}\nfunction admin() {\n  if (factoryForTests) return factoryForTests();\n  return ${secret};\n}\n`,
+      `let testMake: (() => ReturnType<typeof createClient>) | undefined;\nexport function useTestMake(f: () => ReturnType<typeof createClient>) {\n  testMake = f;\n}\nfunction admin() {\n  if (testMake) return testMake();\n  return ${secret};\n}\n`,
     ],
     [
       'a singleton nothing assigns',
