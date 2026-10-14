@@ -36,7 +36,10 @@ The client's role comes from how it is created: a client created with a publisha
 runs as `anon` or `authenticated` (the default role set, `settings.supabase.defaultRoles`), and a
 client created with a service role or secret key bypasses RLS and is never reported. A call is
 reported only when **no** role in the set passes, so a table readable by `authenticated` alone is
-fine for a client that may be signed in. Map your own client factories with
+fine for a client that may be signed in. For a read, update or delete, only the roles that hold
+every table privilege the call needs count (the same privileges `table-granted` checks): when no
+role holds them, the call fails with error 42501 instead of returning nothing, so `table-granted`
+reports it and this rule does not. Map your own client factories with
 [`settings.supabase.clients`](../configuration.md#clients).
 
 Examples of **incorrect** code for this rule:
@@ -141,6 +144,8 @@ role client.
 - `insert(...)`, `insert(...).select()` and every `upsert`: without the policies they need, they
   fail loudly with error 42501, so they are not silent failures. Grants are checked by
   `table-granted`.
+- A read, update or delete that no role in the set holds the privileges for: it fails loudly
+  with error 42501, which `table-granted` reports.
 - Views: RLS applies to the tables a view reads only when the view is `security_invoker`, so
   views are skipped (reason `view`).
 - Tables without RLS pass.
@@ -148,7 +153,8 @@ role client.
 The rule skips, and counts in its statistics, a call it cannot resolve: a `schema` or `table` that
 is not a string literal (or a union of at most five), an operation not chained to `.from()`, a
 subscription with no `table` or a non-literal `event`, a client it cannot trace to the call that
-created it, a client whose key is neither visibly publishable nor service role when
+created it (including a client from your own factory when that factory can also return a value
+it cannot trace, such as a client a test installs), a client whose key is neither visibly publishable nor service role when
 `settings.supabase.unknownKey` is `skip`, a file with no `supabase/migrations` folder above it, a
 replay that fails, a table that no migration creates, and a table whose policies a `do` block
 changes. Set `reportUnresolved` to report skipped calls.

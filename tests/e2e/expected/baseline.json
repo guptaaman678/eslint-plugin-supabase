@@ -6,13 +6,6 @@
       {
         "line": 13,
         "column": 9,
-        "ruleId": "supabase/rls-readable",
-        "severity": 2,
-        "message": "`public.todos` has row level security on and no delete policy (or no select policy, which deletes need to find rows) for anon or authenticated in your migrations, so this delete removes no rows and returns no error. Add a delete policy and a select policy, or run it through a function or a server-side client."
-      },
-      {
-        "line": 13,
-        "column": 9,
         "ruleId": "supabase/table-granted",
         "severity": 2,
         "message": "authenticated has no delete privilege on `public.todos` in your migrations, so this call fails with 42501 (permission denied). Fix in a migration: `grant delete on public.todos to authenticated;`"

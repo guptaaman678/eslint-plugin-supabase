@@ -116,3 +116,17 @@ alter table app.audit_log enable row level security;
 create policy "anyone writes" on app.audit_log
   for insert to anon, authenticated
   with check (true);
+
+-- The Data API roles hold every privilege on the app tables, so only policies decide there.
+grant select, insert, update, delete on all tables in schema app to anon, authenticated;
+
+-- RLS on, no policy; only select is granted, so writes fail loudly with 42501 and
+-- table-granted reports them (ADR-025 item 2).
+create table public.orders_archive (
+  id bigint generated always as identity primary key,
+  total numeric not null
+);
+
+alter table public.orders_archive enable row level security;
+
+revoke insert, update, delete on public.orders_archive from anon, authenticated;

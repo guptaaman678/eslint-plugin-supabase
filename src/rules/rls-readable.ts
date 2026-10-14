@@ -9,6 +9,7 @@ import { readSettings, type Role } from '../settings.js';
 import { stats, type StatsReason } from '../stats.js';
 import { analyzeCall, type Subscription, type TableCall } from '../supabase/calls.js';
 import { createRule } from '../util/create-rule.js';
+import { privilegesOf } from './table-granted.js';
 import {
   ignoredNames,
   locationText,
@@ -37,10 +38,17 @@ export interface Options {
   readonly reportUnresolved: boolean;
 }
 
-/** What a call needs from the policies of its table (§6.6, ADR-007). */
+/**
+ * What a call needs from the policies of its table (§6.6, ADR-007), and for a read or write the
+ * table privileges it needs (ADR-025 item 2).
+ */
 export type Access =
-  | { readonly kind: 'read' }
-  | { readonly kind: 'update' | 'delete'; readonly filtered: boolean }
+  | { readonly kind: 'read'; readonly privileges: readonly Privilege[] }
+  | {
+      readonly kind: 'update' | 'delete';
+      readonly filtered: boolean;
+      readonly privileges: readonly Privilege[];
+    }
   | { readonly kind: 'subscription' };
 
 /** What the rule decides for one (schema, table) of a call. */
@@ -79,10 +87,10 @@ export function accessOf(call: TableCall | Subscription): Access | 'dynamic-even
   }
   switch (call.operation) {
     case 'select':
-      return { kind: 'read' };
+      return { kind: 'read', privileges: privilegesOf(call) };
     case 'update':
     case 'delete':
-      return { kind: call.operation, filtered: call.filtered };
+      return { kind: call.operation, filtered: call.filtered, privileges: privilegesOf(call) };
     default:
       return undefined;
   }
@@ -99,6 +107,8 @@ export function bypassesRls(roles: readonly Role[]): boolean {
  * (or `all`) whose `using` is not literally `false`. A filtered update or delete also needs a
  * select policy, because its filter reads rows. Views and relations the migrations never create
  * are skipped, and so is a table with RLS on whose policies a `do` block changes (ADR-023).
+ * A read or write considers only the roles that hold every privilege it needs; when none does,
+ * the call fails with 42501, which `table-granted` reports, so it passes here (ADR-025 item 2).
  */
 export function rlsVerdict(
   view: SchemaView,
@@ -112,11 +122,20 @@ export function rlsVerdict(
   if (relation === undefined) return { kind: 'skip', reason: 'unknown-relation' };
   if (relation.kind === 'view') return { kind: 'skip', reason: 'view' };
   if (!relation.rls.enabled) return OK;
+  const considered =
+    access.kind === 'subscription'
+      ? roles
+      : roles.filter((role) =>
+          access.privileges.every((privilege) =>
+            view.canUse(role, table.schema, table.name, privilege),
+          ),
+        );
+  if (access.kind !== 'subscription' && considered.length === 0) return OK;
   if (relation.policiesUncertain !== null) {
     return { kind: 'skip', reason: 'policy-uncertain', at: relation.policiesUncertain };
   }
   const allows = (command: Privilege) =>
-    roles.some((role) =>
+    considered.some((role) =>
       view
         .policies(role, table.schema, table.name, command)
         .some((policy) => policy.using !== 'false'),

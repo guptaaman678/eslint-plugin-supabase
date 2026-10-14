@@ -121,8 +121,9 @@ list:
 3. a key argument whose name says anon or publishable (`/anon[_-]?key|publishable/i`), or a
    literal that starts with `sb_publishable_`: `defaultRoles`;
 4. any other key: `defaultRoles`, or skipped when `unknownKey` is `"skip"`;
-5. a client the plugin cannot trace (a function parameter, a `let`, an object property, or `new` of
-   a class that is not supabase-js's, such as a `Proxy`): skipped.
+5. a client the plugin cannot trace (a function parameter, a `let`, an object property, the result
+   of calling one of these, such as `getClient()` where `getClient` is a parameter, or `new` of a
+   class that is not supabase-js's, such as a `Proxy`): skipped.
 
 A key's name is the variable or property it is read from (`process.env.SUPABASE_SERVICE_ROLE_KEY`,
 `serviceKey`), or the string a helper is called with (`Deno.env.get('SUPABASE_ANON_KEY')`,
@@ -133,7 +134,11 @@ read the clients that function returns: every `return` (and an arrow's expressio
 `const` aliases, `await` and up to three of your own factories deep. A module-level `let` that the
 function returns (a lazily created client) counts every value assigned to it. Both branches of a
 returned `cond ? client : null` count. `null` and `undefined` returns are ignored. If every returned client has a key that steps 2 and 3 classify the
-same way, that answer is used; otherwise step 4 applies. A `clients` entry still wins.
+same way, that answer is used. If any returned value cannot be traced (step 5), for example a
+test seam such as a setter that stores a client it is given (`client = c`) or a branch that
+returns `factoryForTests()`, the call is skipped as in step 5, since the factory may return a
+client with any role. Otherwise step 4 applies. A `clients` entry still wins, so map such a
+factory to have its calls checked.
 
 Only names and key prefixes in your source are read. The plugin never reads `.env` files and never
 decodes, logs or prints a key.

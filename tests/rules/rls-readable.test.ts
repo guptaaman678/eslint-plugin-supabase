@@ -177,6 +177,10 @@ createRuleTester().run('rls-readable', rlsReadable, {
     }),
     // A select policy for anon passes the default role set.
     valid(F, from('scores', '.select()', 'app')),
+    // No role holds update or delete: the write fails with 42501, which table-granted reports
+    // (ADR-025 item 2).
+    valid(F, from('orders_archive', ".update({ total: 1 }).eq('id', 1)")),
+    valid(F, from('orders_archive', '.delete()')),
     // Real migrations: an altered policy, a `db pull` baseline, the auto-RLS trigger.
     valid('policies', from('todos', '.select()')),
     valid('db-pull', from('todos', '.select()')),
@@ -242,6 +246,8 @@ createRuleTester().run('rls-readable', rlsReadable, {
     // An unfiltered update or delete without its write policy.
     report(F, from('orders', '.delete()'), 'deletesNoRows', ['public.orders']),
     report(F, from('audit_log', ".update({ entry: 'x' })"), 'updatesNoRows', ['public.audit_log']),
+    // Select is still granted on a table with writes revoked, so its reads are checked.
+    report(F, from('orders_archive', '.select()'), 'noSelectPolicy', ['public.orders_archive']),
     // Subscriptions: INSERT, UPDATE and `*` events are silenced by RLS.
     report(F, subscribe('orders'), 'subscriptionNoEvents', ['public.orders']),
     report(F, subscribe('orders', 'INSERT'), 'subscriptionNoEvents', ['public.orders']),

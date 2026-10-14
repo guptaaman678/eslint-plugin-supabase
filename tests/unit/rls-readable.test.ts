@@ -15,64 +15,94 @@ import { ignoredNames } from '../../src/rules/realtime-table-published.js';
 import plugin from '../../src/index.js';
 import { stats } from '../../src/stats.js';
 import type { Subscription, TableCall } from '../../src/supabase/calls.js';
-import { AT, fakeView } from '../harness/fake-snapshot.js';
+import { AT, fakeView, type FakeRelation } from '../harness/fake-snapshot.js';
 import { schemaFixture, TS_FIXTURE_DIR } from '../harness/rule-tester.js';
 
 const DO_AT = { file: 'supabase/migrations/0002_policies.sql', line: 4, column: 1 };
+const ALL = ['select', 'insert', 'update', 'delete'];
+
+const relations: Record<string, FakeRelation> = {
+  // RLS on, no policy.
+  'public.orders': { rls: true },
+  // RLS off.
+  'public.messages': {},
+  'public.todo_titles': { kind: 'view' },
+  // A select policy for PUBLIC; update and delete policies for authenticated.
+  'public.todos': {
+    rls: true,
+    policies: [
+      { command: 'select' },
+      { command: 'update', roles: ['authenticated'] },
+      { command: 'delete', roles: ['authenticated'] },
+    ],
+  },
+  // ALL for anon.
+  'public.scores': { rls: true, policies: [{ command: 'all', roles: ['anon'] }] },
+  // Restrictive only, and `using (false)`.
+  'app.scores': {
+    rls: true,
+    policies: [{ command: 'select', permissive: false }],
+  },
+  'app.audit_log': {
+    rls: true,
+    policies: [
+      { command: 'select', using: 'false' },
+      { command: 'update', using: 'false' },
+    ],
+  },
+  // Update and delete policies, no select policy.
+  'app.orders': {
+    rls: true,
+    policies: [{ command: 'update' }, { command: 'delete' }],
+  },
+  // RLS from the automatic RLS trigger, no policy.
+  'public.audit_log': {
+    rls: { enabled: true, forced: false, source: 'auto-rls', at: AT },
+  },
+  // A materialized view: RLS never applies.
+  'public.score_totals': { kind: 'materialized view' },
+  // Policies a `do` block changes (ADR-023): with RLS on (no known policy), and with RLS off.
+  'public.messages_log': { rls: true, policiesUncertain: DO_AT },
+  'app.messages': { policiesUncertain: DO_AT },
+};
 
 const view = fakeView({
   relations: {
-    // RLS on, no policy.
-    'public.orders': { rls: true },
-    // RLS off.
-    'public.messages': {},
-    'public.todo_titles': { kind: 'view' },
-    // A select policy for PUBLIC; update and delete policies for authenticated.
-    'public.todos': {
+    // Every privilege granted to PUBLIC, so only policies decide.
+    ...Object.fromEntries(
+      Object.entries(relations).map(([name, relation]) => [
+        name,
+        { ...relation, grants: { public: ALL } },
+      ]),
+    ),
+    // Policies for everything; update and delete not granted, select only on some columns
+    // (ADR-025 item 2).
+    'app.todos': {
       rls: true,
-      policies: [
-        { command: 'select' },
-        { command: 'update', roles: ['authenticated'] },
-        { command: 'delete', roles: ['authenticated'] },
-      ],
+      columnGrants: { anon: ['select'], authenticated: ['select'] },
+      policies: [{ command: 'all' }],
     },
-    // ALL for anon.
-    'public.scores': { rls: true, policies: [{ command: 'all', roles: ['anon'] }] },
-    // Restrictive only, and `using (false)`.
-    'app.scores': {
+    // A select policy for anon only, and the select privilege for authenticated only.
+    'app.scores_by_role': {
       rls: true,
-      policies: [{ command: 'select', permissive: false }],
+      grants: { authenticated: ['select'] },
+      policies: [{ command: 'select', roles: ['anon'] }],
     },
-    'app.audit_log': {
-      rls: true,
-      policies: [
-        { command: 'select', using: 'false' },
-        { command: 'update', using: 'false' },
-      ],
-    },
-    // Update and delete policies, no select policy.
-    'app.orders': {
-      rls: true,
-      policies: [{ command: 'update' }, { command: 'delete' }],
-    },
-    // RLS from the automatic RLS trigger, no policy.
-    'public.audit_log': {
-      rls: { enabled: true, forced: false, source: 'auto-rls', at: AT },
-    },
-    // A materialized view: RLS never applies.
-    'public.score_totals': { kind: 'materialized view' },
-    // Policies a `do` block changes (ADR-023): with RLS on (no known policy), and with RLS off.
-    'public.messages_log': { rls: true, policiesUncertain: DO_AT },
-    'app.messages': { policiesUncertain: DO_AT },
+    // RLS on, no policy, no privilege.
+    'app.orders_revoked': { rls: true },
   },
 });
 
 const table = (name: string, schema = 'public') => ({ schema, name });
 const DEFAULT = ['anon', 'authenticated'] as const;
 const NONE: ReadonlySet<string> = new Set();
-const READ: Access = { kind: 'read' };
+const READ: Access = { kind: 'read', privileges: ['select'] };
 const SUBSCRIPTION: Access = { kind: 'subscription' };
-const write = (kind: 'update' | 'delete', filtered: boolean): Access => ({ kind, filtered });
+const write = (kind: 'update' | 'delete', filtered: boolean, returning = false): Access => ({
+  kind,
+  filtered,
+  privileges: filtered || returning ? [kind, 'select'] : [kind],
+});
 const OK = { kind: 'ok' };
 const report = (messageId: string, autoRls = false) => ({ kind: 'report', messageId, autoRls });
 
@@ -174,6 +204,31 @@ describe('rlsVerdict', () => {
     );
   });
 
+  it('considers only the roles that hold the privileges a read or write needs (ADR-025)', () => {
+    // No role holds update or delete: the call fails with 42501, table-granted reports it.
+    expect(rlsVerdict(view, table('todos', 'app'), DEFAULT, write('update', false), NONE)).toEqual(
+      OK,
+    );
+    expect(rlsVerdict(view, table('todos', 'app'), DEFAULT, write('delete', true), NONE)).toEqual(
+      OK,
+    );
+    expect(rlsVerdict(view, table('orders_revoked', 'app'), DEFAULT, READ, NONE)).toEqual(OK);
+    // A column grant is enough, and the policy decides.
+    expect(rlsVerdict(view, table('todos', 'app'), DEFAULT, READ, NONE)).toEqual(OK);
+    // anon has the policy but not the privilege; authenticated the privilege but no policy.
+    expect(rlsVerdict(view, table('scores_by_role', 'app'), DEFAULT, READ, NONE)).toEqual(
+      report('noSelectPolicy'),
+    );
+    expect(rlsVerdict(view, table('scores_by_role', 'app'), ['anon'], READ, NONE)).toEqual(OK);
+    // Subscriptions are unchanged (ADR-025 item 2).
+    expect(rlsVerdict(view, table('orders_revoked', 'app'), DEFAULT, SUBSCRIPTION, NONE)).toEqual(
+      report('subscriptionNoEvents'),
+    );
+    expect(rlsVerdict(view, table('scores_by_role', 'app'), DEFAULT, SUBSCRIPTION, NONE)).toEqual(
+      OK,
+    );
+  });
+
   it('passes ignored tables before anything else', () => {
     const ignored = ignoredNames([
       { table: 'orders', reason: 'r' },
@@ -203,8 +258,9 @@ describe('accessOf', () => {
       write('update', true),
     );
     expect(accessOf(tableCall({ operation: 'delete', returning: true }))).toEqual(
-      write('delete', false),
+      write('delete', false, true),
     );
+    expect(accessOf(tableCall({ operation: 'update' }))).toEqual(write('update', false));
   });
 
   it('does not check inserts and upserts (ADR-007 item 1)', () => {

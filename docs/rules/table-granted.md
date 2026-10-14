@@ -116,7 +116,9 @@ them.
 
 The rule skips, and counts in its statistics, a call it cannot resolve: a `schema` or `table` that
 is not a string literal (or a union of at most five), an operation not chained to `.from()`, a
-subscription with no `table`, a client it cannot trace to the call that created it, a client whose
+subscription with no `table`, a client it cannot trace to the call that created it (including a
+client from your own factory when that factory can also return a value it cannot trace, such as
+a client a test installs), a client whose
 key is neither visibly publishable nor service role when `settings.supabase.unknownKey` is `skip`,
 a file with no `supabase/migrations` folder above it, a replay that fails, and a table that no
 migration creates. Set `reportUnresolved` to report skipped calls.
