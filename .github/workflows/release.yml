@@ -13,7 +13,14 @@ permissions:
   contents: read
 
 jobs:
+  # The pinned corpus regression must pass before anything is versioned or staged.
+  corpus:
+    uses: ./.github/workflows/corpus.yml
+    permissions:
+      contents: read
+
   release:
+    needs: corpus
     runs-on: ubuntu-latest
     permissions:
       id-token: write

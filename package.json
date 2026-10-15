@@ -40,6 +40,7 @@
     "pack-check": "node scripts/pack-install-check.js",
     "readme:check": "npm run build && node scripts/readme-check.mjs",
     "ci:local": "node scripts/ci-local.mjs",
+    "corpus": "node scripts/corpus-regression.js",
     "demo:check": "npm run build && node media/demo/check.mjs"
   },
   "keywords": [

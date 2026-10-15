@@ -1,0 +1,155 @@
+{
+  "description": "Pinned corpus for scripts/corpus-regression.js: public MIT or Apache-2.0 projects at fixed commits, with the expected finding count per rule and skip count per reason. Counts only, no source.",
+  "pins": [
+    {
+      "url": "https://github.com/its-tanay003/VAULTX",
+      "sha": "35d195bd29510fef7b22251f47dc2a484e1f2a80",
+      "license": "MIT",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {
+          "supabase/realtime-table-published": 2,
+          "supabase/rls-readable": 13,
+          "supabase/subscribe-status-handler": 5
+        },
+        "skips": {
+          "unknown-client": 63,
+          "view": 3
+        }
+      }
+    },
+    {
+      "url": "https://github.com/anthonysurfermx/defi-mexico-hub",
+      "sha": "dc948029360e00238e473e13ff3cae2a3a0bbad7",
+      "license": "MIT",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {
+          "supabase/realtime-table-published": 1,
+          "supabase/subscribe-status-handler": 5
+        },
+        "skips": {
+          "dynamic-table": 6,
+          "unknown-client": 16,
+          "unknown-relation": 169,
+          "unknown-table": 4,
+          "view": 2
+        }
+      }
+    },
+    {
+      "url": "https://github.com/jopppis/playgrounder",
+      "sha": "18b38255d25abcc79dfb4d06dc6ae2b696a5235c",
+      "license": "MIT",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {
+          "supabase/realtime-table-published": 2,
+          "supabase/subscribe-status-handler": 2
+        },
+        "skips": {
+          "view": 3
+        }
+      }
+    },
+    {
+      "url": "https://github.com/Coder-MayankSaini/CyberCop",
+      "sha": "74c96273fd59ffd67225161dc84132f93b6093fe",
+      "license": "MIT",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {
+          "supabase/realtime-table-published": 1,
+          "supabase/subscribe-status-handler": 1
+        },
+        "skips": {}
+      }
+    },
+    {
+      "url": "https://github.com/automatronous/Aarogya-Samhiti",
+      "sha": "60423551af3517cde065d430ce9238c0ee22d63f",
+      "license": "Apache-2.0",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {
+          "supabase/subscribe-status-handler": 1
+        },
+        "skips": {
+          "publication-uncertain": 2
+        }
+      }
+    },
+    {
+      "url": "https://github.com/ptiporki19/combo-1",
+      "sha": "94ab9aca5f670dc9415f4ff9026a25b16ae5062d",
+      "license": "MIT",
+      "projectDir": "pxv-pay-backups/2025-06-08/application-code",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {},
+        "skips": {
+          "policy-uncertain": 10
+        }
+      }
+    },
+    {
+      "url": "https://github.com/jakebrm/personal-os",
+      "sha": "7932a9aeaef5a5b39c250e19808c142d972cc1e0",
+      "license": "MIT",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {},
+        "skips": {
+          "dynamic-table": 3,
+          "unknown-client": 125
+        }
+      }
+    },
+    {
+      "url": "https://github.com/SICQR/hotmess-ultimate",
+      "sha": "e7a71146188c975a795ab7c1c84ad46b4a5c5066",
+      "license": "MIT",
+      "projectDir": "packages/hotmess-ops-pack/ops_pack",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {},
+        "skips": {
+          "unknown-relation": 19
+        }
+      }
+    },
+    {
+      "url": "https://github.com/hcfgod/KeireEngine",
+      "sha": "c8aec84960881ee4b1250fbd3d66d7f42574c900",
+      "license": "MIT",
+      "projectDir": ".",
+      "supabaseJs": "2.112.3",
+      "expected": {
+        "rules": {},
+        "skips": {
+          "unknown-client": 6
+        }
+      }
+    },
+    {
+      "url": "https://github.com/Hudgins333/MyStorehouse",
+      "sha": "dc78e7e161ddbde5dbb22c395147a2f8df841011",
+      "license": "Apache-2.0",
+      "projectDir": ".",
+      "supabaseJs": "2.117.3",
+      "expected": {
+        "rules": {},
+        "skips": {
+          "unknown-client": 2,
+          "unknown-relation": 9
+        }
+      }
+    }
+  ]
+}

@@ -31,6 +31,7 @@ Node `>=22` is required (`.nvmrc` pins the version used in development).
 | `npm run bench`                   | cold and warm lint timings on generated projects (§6.8 budgets)                               |
 | `npm run pack-check`              | pack the tarball, install it into a throwaway project, lint a fixture app through it          |
 | `npm run ci:local`                | every CI step on this machine, one PASS or FAIL line each (see [Local CI](#local-ci))         |
+| `npm run corpus`                  | pinned corpus regression (see [Pinned corpus](#pinned-corpus)); run `npm run build` first     |
 
 ## Local CI
 
@@ -49,6 +50,24 @@ step and exits 1 if any failed. `npm run ci:local -- --skip-compat` leaves the
 compat cells out (they install packages from npm, so they need the network and
 take a few minutes). It covers only the operating system and Node version it
 runs on.
+
+## Pinned corpus
+
+`tests/corpus/pins.json` pins 10 public projects (MIT or Apache-2.0 only) at
+fixed commits, chosen so that between them they produce findings for several
+rules and skips for several reasons. For each pin it records the finding count
+per rule and the skip count per reason (the reasons of
+`ESLINT_PLUGIN_SUPABASE_STATS`). `npm run corpus` sparse-clones each project
+into a temporary folder, checks its license file, installs only
+`@supabase/supabase-js` at the pinned version with install scripts disabled,
+lints it with the built plugin and fails on any count that differs. It keeps
+no source and deletes the clones.
+
+`.github/workflows/corpus.yml` runs it weekly, on pushes to `main` that change
+the pins or the script, on demand, and from `release.yml` before every release.
+It does not run on ordinary pull requests. When a change is meant to move the
+counts, run `npm run corpus -- --update`, review the diff of `pins.json` and
+explain it in the pull request.
 
 ## Typed fixtures
 

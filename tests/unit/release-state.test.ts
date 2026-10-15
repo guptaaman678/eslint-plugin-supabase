@@ -188,9 +188,18 @@ describe('release.yml', () => {
   });
 
   it('pins every action by commit SHA', () => {
-    const uses = [...workflow.matchAll(/uses: (\S+)/g)].map((match) => match[1]);
-    expect(uses.length).toBeGreaterThan(0);
-    for (const use of uses) expect(use).toMatch(/@[0-9a-f]{40}$/);
+    const uses = [...workflow.matchAll(/uses: (\S+)/g)].map((match) => match[1] ?? '');
+    const remote = uses.filter((use) => !use.startsWith('./'));
+    expect(remote.length).toBeGreaterThan(0);
+    for (const use of remote) expect(use).toMatch(/@[0-9a-f]{40}$/);
+    expect(uses.filter((use) => use.startsWith('./'))).toEqual(['./.github/workflows/corpus.yml']);
+  });
+
+  it('runs the pinned corpus regression before the release job', () => {
+    expect(workflow).toMatch(
+      /\n {2}corpus:\n {4}uses: \.\/\.github\/workflows\/corpus\.yml\n {4}permissions:\n {6}contents: read\n/,
+    );
+    expect(workflow).toMatch(/\n {2}release:\n {4}needs: corpus\n/);
   });
 
   it('publishes only through npm stage on Node 24, with OIDC and no token', () => {
@@ -205,7 +214,7 @@ describe('release.yml', () => {
   it('grants write permissions on the release job only', () => {
     expect(workflow).toMatch(/^permissions:\n {2}contents: read\n\njobs:/m);
     expect(workflow).toMatch(
-      /\n {2}release:\n {4}runs-on: ubuntu-latest\n {4}permissions:\n {6}id-token: write\n {6}contents: write\n {6}pull-requests: write\n/,
+      /\n {2}release:\n {4}needs: corpus\n {4}runs-on: ubuntu-latest\n {4}permissions:\n {6}id-token: write\n {6}contents: write\n {6}pull-requests: write\n/,
     );
     expect(workflow.match(/: write/g)).toHaveLength(3);
   });
