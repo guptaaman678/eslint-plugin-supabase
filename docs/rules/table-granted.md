@@ -92,12 +92,14 @@ export async function logEntry(entry: string) {
 ### The 2026-10-30 grants change
 
 Supabase has announced that from 2026-10-30 it stops granting Data API access to new tables in
-`public` automatically. Before that date, or before a project opts in early (a migration that
-revokes those default privileges, or grants-lint's `since` setting), the replayed default
-privileges usually grant every table privilege to `anon`, `authenticated` and `service_role`, so
-this rule rarely fires on those tables. After it, a new table gets no grant until a migration adds
-one. That is where this rule finds most problems: a call on such a table fails with 42501, and a
-subscription on it fails silently.
+`public` automatically. The replay sees the change only once your project records it: a migration
+that revokes those default privileges (the SQL Supabase published), or grants-lint's `since`
+setting in `grants-lint.config.json` (for a project opted in from the dashboard, or by the platform
+on 2026-10-30). Until then, the replayed default privileges usually grant every table privilege to
+`anon`, `authenticated` and `service_role`, so this rule rarely fires on new tables, and that stays
+true after 2026-10-30 if the project records neither. Once it does, a new table gets no grant until
+a migration adds one. That is where this rule finds most problems: a call on such a table fails
+with 42501, and a subscription on it fails silently.
 
 ### Relation to grants-lint
 

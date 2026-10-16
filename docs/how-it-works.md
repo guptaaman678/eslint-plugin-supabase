@@ -55,9 +55,13 @@ role (at table or column level) and its policies, plus sequences and publication
 replay grants-lint runs, with the same config file, so the two tools never disagree.
 
 The replay models what Supabase sets up before your first migration: the default privileges for
-`anon`, `authenticated` and `service_role` (and the change of those defaults on 2026-10-30, per
-grants-lint's `since` setting), the empty `supabase_realtime` publication, and the opt-in
+`anon`, `authenticated` and `service_role`, the empty `supabase_realtime` publication, and the opt-in
 `ensure_rls` event trigger that turns row level security on for new tables in `public`.
+
+The replay does not know the date. It sees the 2026-10-30 change of those default privileges only
+once the project records it: a migration that revokes them (the SQL Supabase published), or
+grants-lint's `since` setting for a project opted in from the dashboard or by the platform. With
+neither, it keeps the old defaults, after 2026-10-30 too.
 
 The plugin loads the SQL parser once, when ESLint loads the plugin, and then replays
 synchronously inside each rule, in the same thread, for the command line and the editor alike.
@@ -71,6 +75,11 @@ a client it cannot trace, a file with no Supabase project above it, a table no m
 a view, a publication or a table's policies changed inside a `do` block, or a replay that fails. Set a schema rule's
 `reportUnresolved` option to report these calls, or set `ESLINT_PLUGIN_SUPABASE_STATS` to count
 them ([Configuration](./configuration.md#skip-statistics)).
+
+One case is not skipped by default: a client the plugin can trace, but whose key is neither visibly
+a publishable key nor visibly a service role key (`createClient(url, config.key)`), runs as
+`defaultRoles`. Set `unknownKey` to `"skip"` to skip those calls instead
+([Configuration](./configuration.md#unknownkey)).
 
 ## Limitations
 

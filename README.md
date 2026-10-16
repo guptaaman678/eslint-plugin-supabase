@@ -82,7 +82,8 @@ reports:
   no policy for the role returns or changes nothing, with no error:
   [`rls-readable`](docs/rules/rls-readable.md).
 - A client call on a table the role holds no privilege for fails with `42501` (on new tables after
-  the 2026-10-30 change), and a subscription to it receives nothing:
+  the 2026-10-30 change, once the project records it with an opt-in migration or grants-lint's
+  `since` setting), and a subscription to it receives nothing:
   [`table-granted`](docs/rules/table-granted.md).
 
 ## How the schema rules find your migrations
@@ -93,8 +94,9 @@ migrations with the [supabase-grants-lint](https://github.com/guptaaman678/supab
 engine. They read grants-lint's own config (`grants-lint.config.json` or `package.json#grantsLint`),
 so both tools replay the same database. The role of each call comes from the key the client was
 created with: a publishable or anon key means `anon` or `authenticated`, a service role or secret
-key means `service_role`. A file with no migrations above it, a table name that is not a literal or
-a client the plugin cannot trace is skipped, never guessed. Details:
+key means `service_role`, and any other key (such as `config.key`) is treated like a publishable
+key unless the `unknownKey` setting is `"skip"`. A file with no migrations above it, a table name
+that is not a literal or a client the plugin cannot trace is skipped, never guessed. Details:
 [docs/how-it-works.md](docs/how-it-works.md).
 
 ## Rules
