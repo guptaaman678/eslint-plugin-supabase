@@ -31,8 +31,13 @@ function resolveAll(
 }
 
 /** A result without its client text. */
-function rolesOnly({ roles, source, skip }: ClientRoles): ClientRoles {
-  return { roles, source, skip } as ClientRoles;
+function rolesOnly({ roles, source, skip, fromFactory }: ClientRoles): ClientRoles {
+  return {
+    roles,
+    source,
+    skip,
+    ...(fromFactory === undefined ? {} : { fromFactory }),
+  } as ClientRoles;
 }
 
 /** The roles of the single Supabase call in `code`. */
@@ -57,6 +62,8 @@ const SERVICE = { roles: ['service_role'], source: 'service-role-key', skip: und
 const CLIENT_KEY = { roles: DEFAULT, source: 'client-key', skip: undefined };
 const UNKNOWN = { roles: DEFAULT, source: 'unknown-key', skip: undefined };
 const NO_CLIENT = { roles: [], source: undefined, skip: 'unknown-client' };
+/** An untraceable return of the project's own factory: a `clients` entry can still map it. */
+const FACTORY_NO_CLIENT = { ...NO_CLIENT, fromFactory: true };
 const mapped = (...roles: string[]) => ({ roles, source: 'settings', skip: undefined });
 
 const DENO =
@@ -495,7 +502,7 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `function admin(n: number, db: ReturnType<typeof createClient>): ReturnType<typeof createClient> {\n  if (n > 0) return admin(n - 1, db);\n  return db;\n}\n`,
     ],
   ])('ADR-025: skips as unknown-client on %s', (_, factory) => {
-    expect(only(head + factory + call('admin'))).toEqual(NO_CLIENT);
+    expect(only(head + factory + call('admin'))).toStrictEqual(FACTORY_NO_CLIENT);
   });
 
   it('ADR-025: settings still win over an untraceable factory', () => {

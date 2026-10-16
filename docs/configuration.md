@@ -19,6 +19,7 @@ import supabase from 'eslint-plugin-supabase';
 export default [
   {
     files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['**/supabase/functions/**'],
     languageOptions: {
       parser,
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
@@ -28,7 +29,9 @@ export default [
 ];
 ```
 
-If you already use typescript-eslint's typed configs (`recommendedTypeChecked` with
+The `ignores` line keeps Deno edge functions out of typed linting: your `tsconfig.json` does not
+include them, so typescript-eslint would stop on each one with "was not found by the project
+service". If you already use typescript-eslint's typed configs (`recommendedTypeChecked` with
 `projectService`), add `supabase.configs.recommended` after them.
 
 `recommended` turns on every rule (`subscribe-status-handler` as a warning, the others as errors)
@@ -37,19 +40,26 @@ for `**/*.ts`, `**/*.tsx`, `**/*.mts` and `**/*.cts`, and ignores `**/supabase/f
 `settings.supabase.migrationsHash` for the project found from ESLint's working directory, so
 `eslint --cache` stays correct (see [Caching](#caching-and---cache)).
 
-To change one rule, add a config object after it:
+To change one rule, add a config object after it, with the same `files` and `ignores`:
 
 ```js
 export default [
   // ...typed linting as above
   supabase.configs.recommended,
   {
+    files: supabase.configs.recommended.files,
+    ignores: supabase.configs.recommended.ignores,
     rules: {
       'supabase/subscribe-status-handler': ['error', { allowWrappers: ['subscribeOrThrow'] }],
     },
   },
 ];
 ```
+
+The plugin is registered only for the files `recommended` covers. An object that sets a
+`supabase/` rule for every file stops ESLint with `Could not find plugin "supabase"` as soon as it
+meets a `.js` file or an edge function. With `withProject`, keep its result in a variable and use
+its `files` and `ignores` the same way.
 
 ## ES modules only, and CommonJS configs
 
@@ -65,6 +75,14 @@ runs any rule, so the rules can read your migrations synchronously. A module wit
 ```js
 // eslint.config.cjs
 module.exports = import('eslint-plugin-supabase').then(({ default: supabase }) => [
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['**/supabase/functions/**'],
+    languageOptions: {
+      parser: require('@typescript-eslint/parser'),
+      parserOptions: { projectService: true, tsconfigRootDir: __dirname },
+    },
+  },
   supabase.configs.recommended,
 ]);
 ```
@@ -123,7 +141,8 @@ list:
 4. any other key: `defaultRoles`, or skipped when `unknownKey` is `"skip"`;
 5. a client the plugin cannot trace (a function parameter, a `let`, an object property, the result
    of calling one of these, such as `getClient()` where `getClient` is a parameter, or `new` of a
-   class that is not supabase-js's, such as a `Proxy`): skipped.
+   class that is not supabase-js's, such as a `Proxy`): skipped. No `clients` entry reaches such
+   a client, so a helper that takes the client as a parameter is not checked.
 
 A key's name is the variable or property it is read from (`process.env.SUPABASE_SERVICE_ROLE_KEY`,
 `serviceKey`), or the string a helper is called with (`Deno.env.get('SUPABASE_ANON_KEY')`,

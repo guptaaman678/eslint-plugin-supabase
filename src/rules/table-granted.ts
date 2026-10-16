@@ -161,13 +161,18 @@ export const tableGranted = createRule<[Options], MessageId>({
     let projectDir: string | null | undefined;
     let lookup: SchemaLookup | undefined;
 
-    const unresolved = (node: TSESTree.Node, reason: StatsReason, table?: string) => {
+    const unresolved = (
+      node: TSESTree.Node,
+      reason: StatsReason,
+      table?: string,
+      fromFactory?: boolean,
+    ) => {
       stats.recordCall(node, reason);
       if (!options.reportUnresolved) return;
       context.report({
         node,
         messageId: 'unresolved',
-        data: { reason: unresolvedReason(reason, table) },
+        data: { reason: unresolvedReason(reason, table, fromFactory) },
       });
     };
 
@@ -188,7 +193,7 @@ export const tableGranted = createRule<[Options], MessageId>({
         }
         const client = resolveClientRoles(services, call, settings, projectDir);
         if (client.skip !== undefined) {
-          unresolved(node, client.skip);
+          unresolved(node, client.skip, undefined, client.fromFactory);
           return;
         }
         lookup ??= schemaForFile(snapshotCache, context.filename, {

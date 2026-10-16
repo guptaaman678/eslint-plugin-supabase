@@ -27,6 +27,16 @@ describe('unresolvedReason', () => {
     expect(text.endsWith('.')).toBe(true);
   });
 
+  it('suggests `clients` for an untraceable client only when a factory returned it', () => {
+    const direct = unresolvedReason('unknown-client');
+    const factory = unresolvedReason('unknown-client', undefined, true);
+    expect(direct).not.toContain('settings.supabase.clients');
+    expect(direct).toContain('a parameter, a `let` or a property');
+    expect(factory).toContain('Map the factory in `settings.supabase.clients`');
+    expect(factory).toContain('the role it runs as is unknown');
+    expect(factory.endsWith('.')).toBe(true);
+  });
+
   it('gives each reason its own text', () => {
     const texts = Object.keys(FRAGMENTS).map((reason) =>
       unresolvedReason(reason as StatsReason, 'public.x'),

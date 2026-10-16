@@ -12,10 +12,24 @@ export type RoleSkipReason = 'unknown-client' | 'unknown-key';
 /** The step of §6.5 that decided a role set. */
 export type RoleSource = 'settings' | 'service-role-key' | 'client-key' | 'unknown-key';
 
-/** The roles a call can run as, or why the call is skipped. */
+/**
+ * The roles a call can run as, or why the call is skipped. `fromFactory` marks an `unknown-client`
+ * skip whose client comes from the project's own factory: a `clients` entry can map that factory,
+ * while no entry reaches a client that is itself a parameter, a `let` or a property.
+ */
 export type ClientRoles =
-  | { readonly roles: readonly Role[]; readonly source: RoleSource; readonly skip: undefined }
-  | { readonly roles: readonly Role[]; readonly source: undefined; readonly skip: RoleSkipReason };
+  | {
+      readonly roles: readonly Role[];
+      readonly source: RoleSource;
+      readonly skip: undefined;
+      readonly fromFactory?: undefined;
+    }
+  | {
+      readonly roles: readonly Role[];
+      readonly source: undefined;
+      readonly skip: RoleSkipReason;
+      readonly fromFactory?: boolean;
+    };
 
 /** Key names that visibly hold the service-role (or secret) key (§6.5 step 2). */
 export const SERVICE_ROLE_NAMES: readonly RegExp[] = [
@@ -74,7 +88,9 @@ export function resolveClientRoles(
   const mapping = mappedClient(checker, origin, settings.clients, projectDir);
   if (mapping !== undefined) return { roles: mapping.roles, source: 'settings', skip: undefined };
   const key = keyKind(checker, origin);
-  if (key === 'untraceable') return { roles: NO_ROLES, source: undefined, skip: 'unknown-client' };
+  if (key === 'untraceable') {
+    return { roles: NO_ROLES, source: undefined, skip: 'unknown-client', fromFactory: true };
+  }
   if (key === 'service-role') {
     return { roles: SERVICE_ROLE, source: 'service-role-key', skip: undefined };
   }

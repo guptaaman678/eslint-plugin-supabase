@@ -146,7 +146,10 @@ or `table` for schema `public`.
 ```js
 // eslint.config.js
 export default [
+  // ...typed linting and supabase.configs.recommended, then:
   {
+    files: supabase.configs.recommended.files,
+    ignores: supabase.configs.recommended.ignores,
     rules: {
       'supabase/table-granted': [
         'error',

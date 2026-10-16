@@ -83,6 +83,10 @@ a publishable key nor visibly a service role key (`createClient(url, config.key)
 
 ## Limitations
 
+- **Tables your migrations do not create.** If your tables were made in the dashboard and your
+  migrations do not create them, the schema rules have nothing to check and skip every call on them
+  (`unknown-relation`), so a clean run proves nothing. Run `supabase db pull` once to get a baseline
+  migration of your current schema.
 - **Changes made in the dashboard.** The snapshot is what your migrations build. A table added to
   the Realtime publication, a policy or a grant created in the dashboard after your last
   `supabase db pull` is not in your migrations, so the rules can report a call that works in
@@ -94,7 +98,8 @@ a publishable key nor visibly a service role key (`createClient(url, config.key)
 - **Clients the plugin cannot trace.** A client passed in as a function parameter, kept in a `let`,
   read from an object property, returned by calling a parameter or wrapped in a `Proxy` is
   skipped, and so is a client from your own factory when the factory can also return such a value
-  (a test seam), unless the factory is mapped in `settings.supabase.clients`.
+  (a test seam), unless the factory is mapped in `settings.supabase.clients`. No `clients` entry
+  reaches a client that is itself a parameter, a `let` or a property.
 - **Code in `do` blocks and functions.** The replay does not run plpgsql. A publication changed
   inside a `do` block makes that publication's membership unknown, and `realtime-table-published`
   skips it. A policy created, altered or dropped inside a `do` block makes that table's policies
@@ -105,7 +110,9 @@ a publishable key nor visibly a service role key (`createClient(url, config.key)
 - **Column grants.** A role that holds a privilege on some columns counts as holding it. Whether
   those columns cover the ones a call uses is not checked.
 - **Deno edge functions.** Code under `supabase/functions/` needs a Deno TypeScript setup and is
-  ignored by `recommended`.
+  ignored by `recommended`. Keep it out of your typed-linting block too (the `ignores` line in the
+  [configuration](./configuration.md#the-recommended-config)), since your `tsconfig.json` does not
+  include it.
 
 ## Performance
 

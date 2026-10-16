@@ -35,6 +35,7 @@ import supabase from 'eslint-plugin-supabase';
 export default [
   {
     files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['**/supabase/functions/**'],
     languageOptions: {
       parser,
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
@@ -44,7 +45,8 @@ export default [
 ];
 ```
 
-If you already use typescript-eslint's typed configs (`recommendedTypeChecked`), add
+The `ignores` line keeps Deno edge functions, which your `tsconfig.json` does not include, out of
+typed linting. If you already use typescript-eslint's typed configs (`recommendedTypeChecked`), add
 `supabase.configs.recommended` after them. Then lint:
 
 ```sh
@@ -99,6 +101,10 @@ key unless the `unknownKey` setting is `"skip"`. A file with no migrations above
 that is not a literal or a client the plugin cannot trace is skipped, never guessed. Details:
 [docs/how-it-works.md](docs/how-it-works.md).
 
+If your migrations do not create your tables (they were made in the dashboard), the schema rules
+have nothing to check and skip every call on them. Run `supabase db pull` once for a baseline
+migration.
+
 ## Rules
 
 <!-- begin auto-generated rules list -->
@@ -134,8 +140,11 @@ Everything else is optional, under `settings.supabase`:
   skipped.
 - `grantsLintConfig`: a grants-lint config file to use instead of grants-lint's own lookup.
 
-The plugin is an ES module; a CommonJS config imports it with `import()`. All settings, rule
-options, monorepos (`withProject`) and `eslint --cache`:
+To change a rule, add an object after `recommended` with its `files` and `ignores`
+(`files: supabase.configs.recommended.files, ignores: supabase.configs.recommended.ignores`), so
+ESLint finds the plugin for every file the object covers. The plugin is an ES module; a CommonJS
+config imports it with `import()`. All settings, rule options, monorepos (`withProject`) and
+`eslint --cache`:
 [docs/configuration.md](docs/configuration.md).
 
 ## FAQ

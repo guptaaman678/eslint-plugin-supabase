@@ -132,6 +132,19 @@ const UNTRACEABLE_CLIENT = [
   "  return client.from('orders').select();",
   '}',
 ].join('\n');
+// A factory with a test seam: its client is untraceable, but a `clients` entry can map it.
+const UNTRACEABLE_FACTORY = [
+  "import { createClient, type SupabaseClient } from '@supabase/supabase-js';",
+  'let testClient: SupabaseClient | undefined;',
+  'export function setTestClient(client: SupabaseClient) {',
+  '  testClient = client;',
+  '}',
+  'function db() {',
+  "  return (testClient ??= createClient('http://localhost:54321', 'sb_publishable_x'));",
+  '}',
+  "export const rows = db().from('orders').select();",
+].join('\n');
+const FACTORY_UNRESOLVED = unresolvedReason('unknown-client', undefined, true);
 const UNKNOWN_KEY_CLIENT = [
   "import { createClient } from '@supabase/supabase-js';",
   'declare const key: string;',
@@ -387,6 +400,10 @@ createRuleTester().run('table-granted', tableGranted, {
       'realtime-all-tables',
     ),
     unresolved(F, UNTRACEABLE_CLIENT, 'unknown-client'),
+    {
+      ...unresolved(F, UNTRACEABLE_FACTORY, 'unknown-client'),
+      errors: [{ messageId: 'unresolved', data: { reason: FACTORY_UNRESOLVED } }],
+    },
     unresolved(F, UNKNOWN_KEY_CLIENT, 'unknown-key', undefined, { unknownKey: 'skip' }),
     unresolved(undefined, from('orders', '.select()'), 'no-project'),
     unresolved('bad-config', from('todos', '.select()'), 'engine-error'),

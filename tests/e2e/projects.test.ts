@@ -126,6 +126,7 @@ const SUITES = [
   ['mobile', 'off'],
   ['monorepo', '2'],
   ['baseline', 'off'],
+  ['quickstart', 'off'],
 ] as const;
 
 describe.each(SUITES)('e2e project %s (concurrency %s)', (project, concurrency) => {

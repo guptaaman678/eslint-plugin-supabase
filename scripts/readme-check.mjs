@@ -95,6 +95,17 @@ try {
     ['install', '--ignore-scripts', '--no-audit', '--no-fund', '@supabase/supabase-js'],
     work,
   );
+  // What most Supabase projects also have: a Deno edge function, which no tsconfig includes, and
+  // a plain JavaScript file. Neither may produce a message.
+  const extras = {
+    'supabase/functions/hello/index.ts':
+      "import { createClient } from 'jsr:@supabase/supabase-js@2';\n\nDeno.serve(() => new Response(String(createClient)));\n",
+    'scripts/seed.js': "export const titles = ['buy milk'];\n",
+  };
+  for (const [file, body] of Object.entries(extras)) {
+    mkdirSync(dirname(join(work, file)), { recursive: true });
+    writeFileSync(join(work, file), body);
+  }
 
   // The README's steps. The install installs the packed tarball in place of the registry package.
   const [npm, ...args] = shellWords(installLine);
@@ -116,6 +127,10 @@ try {
     if (!lines.includes(want.replace(/\s+/g, ' '))) {
       fail(`the README's output line is not in the real output: ${want}`);
     }
+  }
+  const problems = lines.filter((line) => /^\d+:\d+ (error|warning) /.test(line));
+  if (problems.length !== expectedOutput.length) {
+    fail(`expected only the README's ${expectedOutput.length} line(s), got ${problems.length}`);
   }
   const versions = JSON.parse(run('npm', ['ls', '--json', '--depth', '0'], work)).dependencies;
   const installed = Object.entries(versions)

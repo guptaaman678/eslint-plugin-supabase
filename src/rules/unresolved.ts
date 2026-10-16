@@ -3,8 +3,10 @@ import type { StatsReason } from '../stats.js';
 /**
  * The second half of a schema rule's `unresolved` message (`reportUnresolved`, §6.5): why the
  * call is not checked, and the fix. `table` is the qualified name, for the per-table reasons.
+ * `fromFactory` marks an `unknown-client` call whose client comes from the project's own factory,
+ * the one case a `settings.supabase.clients` entry can fix.
  */
-export function unresolvedReason(reason: StatsReason, table?: string): string {
+export function unresolvedReason(reason: StatsReason, table?: string, fromFactory = false): string {
   switch (reason) {
     case 'dynamic-schema':
       return 'its `schema` is not a string literal. Use a literal schema name.';
@@ -17,7 +19,9 @@ export function unresolvedReason(reason: StatsReason, table?: string): string {
     case 'unknown-operation':
       return 'its operation is not chained to `.from()`. Chain `.select()`, `.update()` or `.delete()` to it in one expression.';
     case 'unknown-client':
-      return 'its client is a parameter, a `let` or a property, so the role it runs as is unknown. Use a client created in a `const`, or map it in `settings.supabase.clients`.';
+      return fromFactory
+        ? 'its client comes from your own factory, which can also return a client that cannot be traced (such as one a test sets), so the role it runs as is unknown. Map the factory in `settings.supabase.clients`.'
+        : 'its client is a parameter, a `let` or a property, so the role it runs as is unknown. To have it checked, call it on a client created in a `const` or returned by your own factory.';
     case 'unknown-key':
       return 'the key of its client is not visibly a publishable or service role key, and `settings.supabase.unknownKey` is `skip`. Map the client in `settings.supabase.clients`.';
     case 'no-project':

@@ -102,7 +102,10 @@ the helpers are fine as they are, since the helper is not a `RealtimeChannel`.
 ```js
 // eslint.config.js
 export default [
+  // ...typed linting and supabase.configs.recommended, then:
   {
+    files: supabase.configs.recommended.files,
+    ignores: supabase.configs.recommended.ignores,
     rules: {
       'supabase/subscribe-status-handler': ['warn', { allowWrappers: ['subscribeWithWatchdog'] }],
     },
