@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
 import ts from 'typescript';
 import { stats } from '../stats.js';
+import { typeAt } from '../supabase/checker.js';
 import { isRealtimeChannel } from '../supabase/types.js';
 import { createRule } from '../util/create-rule.js';
 
@@ -141,15 +142,18 @@ export const subscribeStatusHandler = createRule<[Options], MessageId>({
     const wrappers = new Set(options.allowWrappers);
     stats.recordFile(context.filename);
 
-    const parameterCount: ParameterCount = (expression) =>
-      typeParameterCount(services.getTypeAtLocation(expression));
+    const parameterCount: ParameterCount = (expression) => {
+      const type = typeAt(services, expression);
+      return type === undefined ? undefined : typeParameterCount(type);
+    };
 
     return {
       CallExpression(node) {
         const callee = node.callee;
         if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) return;
         if (callee.property.name !== 'subscribe') return;
-        if (!isRealtimeChannel(checker, services.getTypeAtLocation(callee.object))) return;
+        const receiver = typeAt(services, callee.object);
+        if (receiver === undefined || !isRealtimeChannel(checker, receiver)) return;
         if (!lacksStatusCallback(node, parameterCount, wrappers)) return;
         context.report({ node, messageId: 'noStatusCallback' });
       },
