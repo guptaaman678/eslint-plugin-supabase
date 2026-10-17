@@ -227,6 +227,10 @@ describe('rlsVerdict', () => {
     expect(rlsVerdict(view, table('scores_by_role', 'app'), DEFAULT, SUBSCRIPTION, NONE)).toEqual(
       OK,
     );
+    // A subscription checks every role it is given, so an empty set has no select policy.
+    expect(rlsVerdict(view, table('orders_revoked', 'app'), [], SUBSCRIPTION, NONE)).toEqual(
+      report('subscriptionNoEvents'),
+    );
   });
 
   it('passes ignored tables before anything else', () => {
