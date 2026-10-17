@@ -92,6 +92,22 @@ const headLines = (s, n) =>
     .map((line) => line.slice(0, 300));
 // A crash's message, ESLint's "Occurred while linting" line and the top stack frames.
 const CRASH_LINES = 12;
+// A crash deep inside TypeScript has no plugin frame in its top frames: also print the first
+// frames from the built plugin, which name the call that reached TypeScript.
+const PLUGIN_FRAMES = 6;
+const crashReport = (err) => {
+  const lines = String(err?.stack ?? err)
+    .trim()
+    .split('\n');
+  const head = lines.slice(0, CRASH_LINES);
+  const dist = path.join(ROOT, 'dist');
+  const plugin = lines
+    .slice(CRASH_LINES)
+    .filter((line) => line.includes(dist))
+    .slice(0, PLUGIN_FRAMES);
+  const omitted = plugin.length ? ['    ... (frames outside the plugin omitted)'] : [];
+  return [...head, ...omitted, ...plugin].map((line) => line.slice(0, 300));
+};
 const sorted = (obj) =>
   Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
 
@@ -293,7 +309,7 @@ async function measure(pin, work) {
     const out = path.join(statsDir, 'lint.json');
     const child = await lintInChild(dir, pin, out, path.join(statsDir, 'stats'));
     if (child.code !== 0 || !existsSync(out)) {
-      const report = headLines(child.stderr, CRASH_LINES).join('\n    ');
+      const report = headLines(child.stderr, CRASH_LINES + 1 + PLUGIN_FRAMES).join('\n    ');
       throw new Error(`lint failed (exit ${child.code ?? child.signal}):\n    ${report}`);
     }
     const record = JSON.parse(readFileSync(out, 'utf8'));
@@ -375,6 +391,8 @@ async function main() {
 }
 
 if (values.child) {
+  // Deep enough to reach the plugin's frames below a crash inside TypeScript.
+  Error.stackTraceLimit = 100;
   try {
     await lintChild(
       path.resolve(values.child),
@@ -384,7 +402,7 @@ if (values.child) {
   } catch (err) {
     // Node's own report of an uncaught error ends in the error's properties (AST nodes for a
     // rule crash), which hide the cause. Write the stack, which starts with the message.
-    process.stderr.write(`${headLines(err?.stack ?? err, CRASH_LINES).join('\n')}\n`);
+    process.stderr.write(`${crashReport(err).join('\n')}\n`);
     process.exit(1);
   }
 } else {
