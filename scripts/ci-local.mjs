@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Run every command of the CI jobs (`.github/workflows/ci.yml`) on this machine, one after the
-// other, and print one PASS or FAIL line per step. While the repo is private, push and PR CI runs
-// only the ubuntu legs, so this is how a change is checked on the rest (CONTRIBUTING, "Local CI").
+// other, and print one PASS or FAIL line per step, to check a change before pushing it
+// (CONTRIBUTING, "Local CI").
 //
 //   node scripts/ci-local.mjs                 every step, then the 12 compat cells
 //   node scripts/ci-local.mjs --skip-compat   every step except the compat cells
