@@ -453,6 +453,10 @@ describe('ADR-022: following a project factory to the clients it returns', () =>
       `declare const make: any;\nfunction admin(): ReturnType<typeof createClient> {\n  return make();\n}\n`,
     ],
     [
+      'a call of an untyped function beside a classified return',
+      `declare const make: any;\nfunction admin(x: boolean): ReturnType<typeof createClient> {\n  if (x) return make();\n  return ${secret};\n}\n`,
+    ],
+    [
       'a factory of a dependency in node_modules',
       `import { createVendorDb } from 'vendor-db';\nconst admin = createVendorDb;\n`,
     ],
