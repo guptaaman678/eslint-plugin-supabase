@@ -84,6 +84,14 @@ const TYPE_SETUP =
   /project service|allowDefaultProject|parserOptions\.project|tsconfig|Cannot read file/i;
 
 const firstLine = (s) => String(s).trim().split('\n')[0].slice(0, 300);
+const headLines = (s, n) =>
+  String(s)
+    .trim()
+    .split('\n')
+    .slice(0, n)
+    .map((line) => line.slice(0, 300));
+// A crash's message, ESLint's "Occurred while linting" line and the top stack frames.
+const CRASH_LINES = 12;
 const sorted = (obj) =>
   Object.fromEntries(Object.entries(obj).sort(([a], [b]) => a.localeCompare(b)));
 
@@ -259,8 +267,9 @@ function lintInChild(dir, pin, out, statsBase) {
       env: { ...env, ESLINT_PLUGIN_SUPABASE_STATS: statsBase },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
+    // The child writes its crash report first, so keep the head of stderr.
     let stderr = '';
-    child.stderr.on('data', (d) => (stderr = (stderr + d).slice(-4000)));
+    child.stderr.on('data', (d) => (stderr = (stderr + d).slice(0, 8000)));
     const timer = setTimeout(() => child.kill('SIGKILL'), 15 * MINUTE);
     child.on('close', (code, signal) => {
       clearTimeout(timer);
@@ -284,9 +293,8 @@ async function measure(pin, work) {
     const out = path.join(statsDir, 'lint.json');
     const child = await lintInChild(dir, pin, out, path.join(statsDir, 'stats'));
     if (child.code !== 0 || !existsSync(out)) {
-      throw new Error(
-        `lint failed (exit ${child.code ?? child.signal}): ${firstLine(child.stderr)}`,
-      );
+      const report = headLines(child.stderr, CRASH_LINES).join('\n    ');
+      throw new Error(`lint failed (exit ${child.code ?? child.signal}):\n    ${report}`);
     }
     const record = JSON.parse(readFileSync(out, 'utf8'));
     const skips = {};
@@ -350,7 +358,8 @@ async function main() {
           for (const d of diffs) console.log(`  ${d}`);
         } catch (err) {
           failed++;
-          console.log(`FAIL ${repoName(pin)} ${secs()}\n  ${firstLine(err.stderr || err.message)}`);
+          const reason = err.stderr ? firstLine(err.stderr) : err.message;
+          console.log(`FAIL ${repoName(pin)} ${secs()}\n  ${reason}`);
         }
       }
     };
@@ -366,11 +375,18 @@ async function main() {
 }
 
 if (values.child) {
-  await lintChild(
-    path.resolve(values.child),
-    values['project-dir'] ?? '.',
-    path.resolve(values.out),
-  );
+  try {
+    await lintChild(
+      path.resolve(values.child),
+      values['project-dir'] ?? '.',
+      path.resolve(values.out),
+    );
+  } catch (err) {
+    // Node's own report of an uncaught error ends in the error's properties (AST nodes for a
+    // rule crash), which hide the cause. Write the stack, which starts with the message.
+    process.stderr.write(`${headLines(err?.stack ?? err, CRASH_LINES).join('\n')}\n`);
+    process.exit(1);
+  }
 } else {
   await main();
 }
