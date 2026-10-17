@@ -35,14 +35,12 @@ Node `>=22` is required (`.nvmrc` pins the version used in development).
 
 ## Local CI
 
-While the repository is private, GitHub Actions minutes are limited, so
-`.github/workflows/ci.yml` runs on push and pull request only on ubuntu with
-Node 22 and 24 (the `test` and `package` jobs). The macOS, Windows and Node 26
-legs and the `compat` job run when the workflow is started by hand
-(`workflow_dispatch`). Once the repository is public, the full matrix runs on
-every push again.
+`.github/workflows/ci.yml` runs the full matrix (ubuntu, macOS and Windows,
+Node 22, 24 and 26) and the `compat` job on every push to `main` and every
+pull request; it can also be started by hand (`workflow_dispatch`).
 
-Meanwhile, `npm run ci:local` runs the commands of every CI job in CI order:
+To check a change before pushing, `npm run ci:local` runs the commands of every
+CI job in CI order:
 `npm ci`, `format:check`, `lint`, `typecheck`, `build`, the demo check,
 `test:coverage`, `docs:check`, `pack-check` and the 12 `compat` cells. A failed
 step does not stop the later ones; the script prints one PASS or FAIL line per
