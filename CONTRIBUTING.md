@@ -209,8 +209,64 @@ happens:
 
 ## Maintenance policy
 
-TODO(T13.2): this section is filled in when the project's maintenance policy
-(triage order and response targets, how a confirmed false positive becomes a
-regression fixture, rule ID and removal policy, scope boundaries) is written.
-Until then, security reports go through private vulnerability reporting (see
-`SECURITY.md`), not public issues.
+These are the promises this project makes to its users and contributors.
+
+### Response times
+
+- For the first two months after 0.1.0 is published, every new issue and pull
+  request gets a first response within 72 hours.
+- After that, every new issue and pull request gets a first response within a
+  week.
+- A first response is a human reply: a question, a label with a reason, or a
+  fix. It is not a promise that the fix ships in that time.
+- Security reports never go in public issues. They go through private
+  vulnerability reporting and follow [`SECURITY.md`](SECURITY.md).
+
+### False positives come first
+
+A rule that reports correct code costs every user trust in every other
+report, so false positives are triaged before new rules and new options.
+
+1. Every confirmed false positive becomes a fixture first: a valid case in
+   the rule's tests (or a project under `tests/e2e/projects/`) that
+   reproduces the report with synthetic table names and fails until the rule
+   is fixed.
+2. The fix lands in the same pull request as that fixture, so the case stays
+   in the suite for good.
+3. If the report cannot be fixed without missing real problems, the rule's
+   docs page names the pattern and the way to silence it, and the issue says
+   why.
+
+The [false positive issue form](.github/ISSUE_TEMPLATE/false-positive.yml)
+asks for what a fixture needs: the code, the migration SQL, and the expected
+and actual results.
+
+### Rule names and removal
+
+- A rule name is never reused. A rule that is removed or renamed keeps its
+  name retired, so an old `eslint-disable` comment can never silence a
+  different check.
+- A rule is removed or renamed only in a major version, after at least one
+  release in which it is marked deprecated (`meta.deprecated`, with its
+  replacement named where one exists), and the deprecation is announced in
+  the changelog and on the rule's docs page.
+
+### Supported versions
+
+The peer ranges in `package.json` widen only after the `compat` job passes
+against the new version of ESLint, TypeScript or `supabase-js`.
+
+### Scope
+
+This plugin reports Supabase client calls that fail silently: a query that is
+never sent, a read that RLS filters to nothing, a write the table's grants
+refuse, a realtime subscription that never receives an event. Requests
+outside that scope are pointed elsewhere:
+
+- Problems in the migrations themselves (grants, RLS, publications):
+  [supabase-grants-lint](https://github.com/guptaaman678/supabase-grants-lint).
+- Checks against a live database:
+  [splinter](https://github.com/supabase/splinter), Supabase's database
+  linter.
+- The 1,000-row PostgREST limit:
+  [rowcap](https://github.com/anabecalab/rowcap).
