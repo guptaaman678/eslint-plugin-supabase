@@ -114,7 +114,9 @@ const sorted = (obj) =>
 // ---------------------------------------------------------------------------------------------
 // Child: lint one clone. Pass 1 uses the repository's own tsconfigs (projectService). Files it
 // cannot type are linted again in pass 2 against a generated permissive tsconfig that keeps the
-// root tsconfig's path aliases.
+// root tsconfig's path aliases. Both passes run in one process, so automatic single-run
+// inference stays off: with CI=true typescript-eslint would give a file parsed a second time an
+// isolated program without the tsconfig, and CI would measure other counts than a local run.
 
 function readJsonc(file) {
   try {
@@ -162,7 +164,14 @@ async function lintChild(clone, projectDir, out) {
           files: FILES,
           // The repository's own disable comments name rules this config does not load.
           linterOptions: { reportUnusedDisableDirectives: 'off' },
-          languageOptions: { parser, parserOptions: { ...parserOptions, tsconfigRootDir: clone } },
+          languageOptions: {
+            parser,
+            parserOptions: {
+              ...parserOptions,
+              tsconfigRootDir: clone,
+              disallowAutomaticSingleRunInference: true,
+            },
+          },
         },
         supabase.withProject({ projectDir, files: FILES }),
       ],
