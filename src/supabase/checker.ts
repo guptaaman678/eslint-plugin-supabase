@@ -37,5 +37,17 @@ export function typeAt(
   services: ParserServicesWithTypeInformation,
   node: TSESTree.Node,
 ): ts.Type | undefined {
-  return checkerTypeAt(services.program.getTypeChecker(), services.esTreeNodeToTSNodeMap.get(node));
+  const type = checkerTypeAt(
+    services.program.getTypeChecker(),
+    services.esTreeNodeToTSNodeMap.get(node),
+  );
+  if (type === undefined && process.env.CORPUS_DIAG && !programShown) {
+    programShown = true;
+    const options = services.program.getCompilerOptions();
+    process.stderr.write(
+      `DIAG program cwd ${JSON.stringify(services.program.getCurrentDirectory())} config ${JSON.stringify(options.configFilePath)} baseUrl ${JSON.stringify(options.baseUrl)} paths ${options.paths ? 'set' : 'unset'} moduleResolution ${String(options.moduleResolution)}\n`,
+    );
+  }
+  return type;
 }
+let programShown = false;
