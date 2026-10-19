@@ -1,5 +1,11 @@
 # eslint-plugin-supabase
 
+## 0.1.1
+
+### Patch Changes
+
+- 2d93262: Releases from 0.1.1 on are built and staged by the release workflow with npm provenance, and the README links to the provenance statement on npm. Check it with `npm audit signatures`.
+
 ## 0.1.0
 
 ### Minor Changes
