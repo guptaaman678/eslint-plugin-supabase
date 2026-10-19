@@ -41,13 +41,20 @@ export function typeAt(
     services.program.getTypeChecker(),
     services.esTreeNodeToTSNodeMap.get(node),
   );
-  if (type === undefined && process.env.CORPUS_DIAG && !programShown) {
-    programShown = true;
+  if (process.env.CORPUS_DIAG) {
     const options = services.program.getCompilerOptions();
-    process.stderr.write(
-      `DIAG program cwd ${JSON.stringify(services.program.getCurrentDirectory())} config ${JSON.stringify(options.configFilePath)} baseUrl ${JSON.stringify(options.baseUrl)} paths ${options.paths ? 'set' : 'unset'} moduleResolution ${String(options.moduleResolution)}\n`,
-    );
+    const key = `cwd ${JSON.stringify(services.program.getCurrentDirectory())} config ${JSON.stringify(options.configFilePath)} paths ${options.paths ? 'set' : 'unset'} moduleResolution ${String(options.moduleResolution)}`;
+    const seen = programs.get(key) ?? { calls: 0, throws: 0 };
+    seen.calls++;
+    if (type === undefined) seen.throws++;
+    programs.set(key, seen);
+    if (programs.size === 1 && seen.calls === 1) {
+      process.on('exit', () => {
+        for (const [k, v] of programs)
+          process.stderr.write(`DIAG program ${k} calls ${v.calls} throws ${v.throws}\n`);
+      });
+    }
   }
   return type;
 }
-let programShown = false;
+const programs = new Map<string, { calls: number; throws: number }>();

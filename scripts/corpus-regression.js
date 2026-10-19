@@ -314,6 +314,8 @@ async function measure(pin, work) {
       throw new Error(`lint failed (exit ${child.code ?? child.signal}):\n    ${report}`);
     }
     const record = JSON.parse(readFileSync(out, 'utf8'));
+    if (process.env.CORPUS_DIAG)
+      console.log(`DIAG record files ${record.files} retries ${record.typeSetupRetries} parseErrors ${record.parseErrors}`);
     const skips = {};
     for (const f of readdirSync(statsDir).filter((f) => /^stats\.\d+\.json$/.test(f))) {
       for (const [k, v] of Object.entries(
