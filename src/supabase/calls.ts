@@ -4,6 +4,7 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import ts from 'typescript';
+import { typeAt } from './checker.js';
 import { findProperty, resolveExpression, resolveObject, stringValues } from './literals.js';
 import { isFilterMethod, isQueryReceiver, isRealtimeChannel, isSupabaseFile } from './types.js';
 
@@ -85,7 +86,8 @@ export function analyzeCall(
   const method = callee.property.name;
   if (method !== 'from' && method !== 'rpc' && method !== 'on') return undefined;
   const checker = services.program.getTypeChecker();
-  const receiverType = services.getTypeAtLocation(callee.object);
+  const receiverType = typeAt(services, callee.object);
+  if (receiverType === undefined) return undefined;
   const call = services.esTreeNodeToTSNodeMap.get(node);
   if (method === 'on') {
     return isRealtimeChannel(checker, receiverType) ? subscription(checker, node, call) : undefined;

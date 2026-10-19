@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { checkerTypeAt } from './checker.js';
 
 /** A wider union of literal names is treated as dynamic (§6.3). */
 export const MAX_LITERAL_UNION = 5;
@@ -13,7 +14,8 @@ export function stringValues(
   node: ts.Expression,
 ): readonly string[] | undefined {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node.text];
-  const type = checker.getTypeAtLocation(node);
+  const type = checkerTypeAt(checker, node);
+  if (type === undefined) return undefined;
   const parts = type.isUnion() ? type.types : [type];
   if (parts.length > MAX_LITERAL_UNION) return undefined;
   const values: string[] = [];

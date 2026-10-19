@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
 import type { RuleFix, RuleFixer } from '@typescript-eslint/utils/ts-eslint';
 import { stats } from '../stats.js';
+import { typeAt } from '../supabase/checker.js';
 import { isRefinementMethod, lazyBuilder, type BuilderKind } from '../supabase/types.js';
 import { createRule } from '../util/create-rule.js';
 
@@ -104,8 +105,10 @@ export const noUnsentQuery = createRule<[], MessageId>({
     const sourceCode = context.sourceCode;
     stats.recordFile(context.filename);
 
-    const builderKind = (expression: TSESTree.Expression): BuilderKind | undefined =>
-      lazyBuilder(checker, services.getTypeAtLocation(expression))?.kind;
+    const builderKind = (expression: TSESTree.Expression): BuilderKind | undefined => {
+      const type = typeAt(services, expression);
+      return type === undefined ? undefined : lazyBuilder(checker, type)?.kind;
+    };
 
     /**
      * `q.eq('a', 1);` on a query builder held in a variable or parameter: every call of the
@@ -123,7 +126,13 @@ export const noUnsentQuery = createRule<[], MessageId>({
         node = callee.object;
         calls++;
       }
-      return calls > 0 && node.type === AST_NODE_TYPES.Identifier && builderKind(node) === 'query';
+      return calls > 0 && node.type === AST_NODE_TYPES.Identifier && queryOrUntyped(node);
+    }
+
+    /** A variable the checker cannot type is not reported either (§6.1: skip, never guess). */
+    function queryOrUntyped(node: TSESTree.Identifier): boolean {
+      const type = typeAt(services, node);
+      return type === undefined || lazyBuilder(checker, type)?.kind === 'query';
     }
 
     function operand(builder: TSESTree.Expression): string {
