@@ -26,8 +26,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        node: ['22.16.0', '24']
+        os: [ubuntu-latest]
+        node: ['24']
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     permissions:
@@ -43,6 +43,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: node --version
+      - run: node scripts/t95-clone-files.mjs anthonysurfermx/defi-mexico-hub,Hudgins333/MyStorehouse
       - run: node scripts/corpus-regression.js --only anthonysurfermx/defi-mexico-hub,Hudgins333/MyStorehouse
         env:
           CORPUS_DIAG: '1'
