@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-supabase",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ESLint rules for Supabase projects: unsent query builders, missing realtime subscribe status handlers, unpublished realtime tables, and RLS or grant mismatches.",
   "type": "module",
   "exports": {
