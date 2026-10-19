@@ -279,6 +279,10 @@ describe('isRefinementMethod', () => {
         [
           "const q = supabase.from('todos').select();",
           "void q.eq('id', 1).order('id').single();",
+          'void q.explain();',
+          'void q.maybeSingle();',
+          'void q.geojson();',
+          'void q.throwOnError();',
           'class Local {\n  eq() {\n    return this;\n  }\n}',
           'void new Local().eq();',
           'const literal = { eq: () => 1 };',
@@ -297,6 +301,10 @@ describe('isRefinementMethod', () => {
       "q.eq('id', 1).order('id').single": [false, false],
       "q.eq('id', 1).order": [true, false],
       'q.eq': [true, true],
+      'q.explain': [false, false],
+      'q.maybeSingle': [false, false],
+      'q.geojson': [false, false],
+      'q.throwOnError': [false, false],
       'new Local().eq': [false, false],
       'literal.eq': [false, false],
     });

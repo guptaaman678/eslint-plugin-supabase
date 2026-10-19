@@ -79,6 +79,9 @@ createRuleTester().run('no-unsent-query', noUnsentQuery, {
       "import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';\n" +
         "export function narrow(q: PostgrestFilterBuilder<any, any, any, any, any, any, any>) {\n  q.in('id', [1, 2]).range(0, 9);\n  return q;\n}",
     ),
+    code(
+      "export async function plan() {\n  const q = supabase.from('todos').select();\n  return await q.explain({ analyze: true });\n}",
+    ),
   ],
   invalid: [
     // ADR-022 item 5: still reported: the variable alone, a chain from the client, and a chain
@@ -97,6 +100,26 @@ createRuleTester().run('no-unsent-query', noUnsentQuery, {
       messageId: 'floatingBuilder',
       target: "q.eq('id', 1).csv()",
       then: "void q.eq('id', 1).csv().then()",
+    }),
+    invalid("const q = supabase.from('todos').select();\nq.explain();", {
+      messageId: 'floatingBuilder',
+      target: 'q.explain()',
+      then: 'void q.explain().then()',
+    }),
+    invalid("const q = supabase.from('todos').select();\nq.maybeSingle();", {
+      messageId: 'floatingBuilder',
+      target: 'q.maybeSingle()',
+      then: 'void q.maybeSingle().then()',
+    }),
+    invalid("const q = supabase.from('todos').select();\nq.geojson();", {
+      messageId: 'floatingBuilder',
+      target: 'q.geojson()',
+      then: 'void q.geojson().then()',
+    }),
+    invalid("const q = supabase.from('todos').select();\nq.throwOnError();", {
+      messageId: 'floatingBuilder',
+      target: 'q.throwOnError()',
+      then: 'void q.throwOnError().then()',
     }),
     invalid("const q = supabase.from('todos').select();\nq['eq']('id', 1);", {
       messageId: 'floatingBuilder',
