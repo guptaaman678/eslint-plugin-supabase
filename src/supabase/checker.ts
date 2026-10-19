@@ -10,9 +10,26 @@ import type ts from 'typescript';
 export function checkerTypeAt(checker: ts.TypeChecker, node: ts.Node): ts.Type | undefined {
   try {
     return checker.getTypeAtLocation(node);
-  } catch {
+  } catch (error) {
+    if (process.env.CORPUS_DIAG) diag(error, node);
     return undefined;
   }
+}
+
+// Diagnostic only (branch agent/T9.5-corpus-diag, never merged): the first throws' stacks, with
+// paths reduced to the package and file name, and the throw count at exit.
+let throws = 0;
+function diag(error: unknown, node: ts.Node): void {
+  throws++;
+  if (throws === 1) {
+    process.on('exit', () => process.stderr.write(`DIAG throws ${throws}\n`));
+  }
+  if (throws > 2) return;
+  const lines = String((error as Error).stack ?? error)
+    .split('\n')
+    .slice(0, 40)
+    .map((line) => line.replace(/\(?\/[^\s)]*\/(node_modules\/[^/]+|dist)\/[^\s)]*\/?([^/\s)]+)\)?/g, '[$1 $2]'));
+  process.stderr.write(`DIAG kind ${node.kind}\n${lines.join('\n')}\n`);
 }
 
 /** `checkerTypeAt` for an ESTree node. */

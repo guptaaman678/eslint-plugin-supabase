@@ -308,6 +308,7 @@ async function measure(pin, work) {
     mkdirSync(statsDir, { recursive: true });
     const out = path.join(statsDir, 'lint.json');
     const child = await lintInChild(dir, pin, out, path.join(statsDir, 'stats'));
+    if (process.env.CORPUS_DIAG) console.log(`DIAG ${repoName(pin)}\n${child.stderr}`);
     if (child.code !== 0 || !existsSync(out)) {
       const report = headLines(child.stderr, CRASH_LINES + 1 + PLUGIN_FRAMES).join('\n    ');
       throw new Error(`lint failed (exit ${child.code ?? child.signal}):\n    ${report}`);

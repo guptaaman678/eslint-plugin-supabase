@@ -10,7 +10,7 @@ on:
     # Tuesdays 05:41 UTC
     - cron: '41 5 * * 2'
   push:
-    branches: [main]
+    branches: [main, agent/T9.5-corpus-diag]
     paths:
       - 'tests/corpus/**'
       - 'scripts/corpus-regression.js'
@@ -37,4 +37,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm run corpus
+      - run: node --version
+      - run: node scripts/corpus-regression.js --only anthonysurfermx/defi-mexico-hub,Hudgins333/MyStorehouse,jopppis/playgrounder
+        env:
+          CORPUS_DIAG: '1'
