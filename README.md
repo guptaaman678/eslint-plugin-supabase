@@ -4,6 +4,7 @@ ESLint rules for the Supabase calls that fail without an error: queries that are
 subscriptions that never fire, and reads that return nothing, flagged in your editor as you type.
 
 [![npm](https://img.shields.io/npm/v/eslint-plugin-supabase)](https://www.npmjs.com/package/eslint-plugin-supabase)
+[![npm provenance](https://img.shields.io/badge/npm-provenance-blue)](https://www.npmjs.com/package/eslint-plugin-supabase#provenance)
 [![ci](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/ci.yml/badge.svg)](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/guptaaman678/eslint-plugin-supabase/badge)](https://scorecard.dev/viewer/?uri=github.com/guptaaman678/eslint-plugin-supabase)
 [![mutation testing](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml/badge.svg)](https://github.com/guptaaman678/eslint-plugin-supabase/actions/workflows/mutation.yml)
